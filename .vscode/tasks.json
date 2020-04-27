@@ -1,0 +1,34 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "echo current workspace",
+            "type": "shell",
+            "command": "echo ${workspaceFolder}",
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "build app (Windows)",
+            "type": "shell",
+            "command": "cl.exe",
+            "args": [
+                "-I", "${workspaceFolder}\\include",
+                "/Zi",
+                "/EHsc",
+                "/Fe:",
+                "${workspaceFolder}\\build\\emgAcquire.exe",
+                "${workspaceFolder}\\src\\emgAcquire.cpp",
+                "${workspaceFolder}\\src\\Acquisition.cpp"
+
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
