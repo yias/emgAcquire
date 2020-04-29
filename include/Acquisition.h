@@ -30,11 +30,13 @@ class Acquisition{
     std::vector<Easy2AcquireCom::IAnalogInputPtr> analogInputDevices;                   // analog input devices (for emg)
     std::vector< std::vector<double> > analogData;                                      // data from the analog inputs
     std::vector< _variant_t > analogBuffers;                                            // buffers for the analog inputs
+    std::vector<float> real_freq_AI;                                                    // the real frequencies of the analog inputs
 
     unsigned int nb_digital_devices;                                                    // number of digital-input devices
     std::vector<Easy2AcquireCom::IDigitalInputPtr> digitalInputDevice;                  // degital input devices (for switches)
     std::vector< std::vector<double> > digitalData;                                     // data from the digital inputs
     std::vector< _variant_t > digitalBuffers;                                           // buffers for the digital inputs
+    std::vector<float> real_freq_DI;                                                    // the real frequencies of the digital inputs
 
     int printComponents(std::string t_prefix);
     int initializeInput(LONG index, _bstr_t type);
@@ -42,6 +44,8 @@ class Acquisition{
 public:
     int initialize(float freq, unsigned int selected_nb_signals=0);
     int activate();
+    int update();
+    int getlatest();
     Acquisition();
     ~Acquisition();
 };

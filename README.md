@@ -8,7 +8,7 @@ The package is distributed under the MIT license.
 
 ## Set-up
 
-1) Ask Noraxon for the Easy2.AcquireCom library and install it on your PC.
+1) Ask Noraxon support service for the Easy2.AcquireCom library and install it on your PC.
 
 2) Clone the rapidjson package as it is described on the socketStream repo [link](https://github.com/yias/socketStream).
 
@@ -22,7 +22,7 @@ Navigate in the directory of the package and run the executable emgAcquire.exe f
 
 ## Noraxon DTS Set-up
 
-Once you launch the executable, the window of the hardware set-up will pop-up. If the Noraxon DTS Receiver is connected and switched-on, it will appear under the panel 'New devices".
+Once you launch the executable, the window of the hardware set-up will pop-up. The first time that you launch the application, the hardware must be set-up. If the Noraxon DTS Receiver is connected and switched-on, it will appear under the panel 'New devices".
 
 ![](docs/pics/dts_0.png)
 

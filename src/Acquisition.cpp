@@ -115,6 +115,7 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
         std::cout << "[Acquisition] #" << (i+1) << " input type: " << type_str << std::endl;
     }
 
+    std::cout << std::endl;
     std::cout << "[Acquisition] Number of digital inputs: " << nb_digital_devices << std::endl;
     std::cout << "[Acquisition] Number of analog inputs: " << nb_analog_devices << std::endl;
     std::cout << std::endl;
@@ -123,14 +124,32 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
         nb_analog_devices = selected_nb_signals;
     }
     std::cout << "[Acquisition] Initializing " << nb_analog_devices << " analog inputs and " << nb_digital_devices << " digital inputs" << std::endl;
-    for(int i=0; i<nb_analog_devices+nb_digital_devices; i++){
+    for(int i=0; i<nb_analog_devices; i++){
 
-        if(initializeInput(i, device->GetComponent(i)->GetType())<0){
-            std::cerr << "[Acquisition] Unable to initialize input " << i << std::endl;
+        if(initializeInput(i, L"type.input.analog")<0){
+            std::cerr << "[Acquisition] Unable to initialize analog input " << i << std::endl;
             return -i-1;
         }
     }
 
+    for(int i=0; i<nb_digital_devices; i++){
+
+        if(initializeInput(i, L"type.input.digital")<0){
+            std::cerr << "[Acquisition] Unable to initialize digital input " << i << std::endl;
+            return -i-1;
+        }
+    }
+
+    // std::cout << "Number of initialized analog inputs: " << analogInputDevices.size() << std::endl;
+    // std::cout << "Number of initialized digital inputs: " << digitalInputDevice.size() << std::endl;
+    // std::cout << "analog inputs: " << std::endl;
+    // for(int i=0; i<analogInputDevices.size(); i++){
+    //     std::cout << analogInputDevices[i]->GetId();
+    // }
+    // std::cout << "digital inputs: " << std::endl;
+    // for(int i=0; i<digitalInputDevice.size(); i++){
+    //     std::cout << digitalInputDevice[i]->GetId();
+    // }
     std::cout << "[Acquisition] Input devices initialized" << std::endl;
 
     return 0;
@@ -187,13 +206,26 @@ int Acquisition::initializeInput(LONG index, _bstr_t type){
 
 int Acquisition::activate(){
 
+    /**
+     * Activate the device and all its components
+     * 
+     * Return 0 if everything is ok, or the error otherwise 
+     * 
+     */
+
+    // activate the device
     device->Activate();
 
+    std::cout << std::endl;
+    std::cout << "[Acquisition] Activating analog input devices" << std::endl;
+    // activate all analog input devices
     for (int i=0; i < nb_analog_devices; i++){
         _bstr_t name = analogInputDevices[i]->GetId();
 
         // read back the granted frequency
         double frequency = analogInputDevices[i]->GetFrequency();
+ 
+        real_freq_AI.push_back((float)frequency);
 
         std::cout << name << std::endl << " Frequency: " << frequency << std::endl;
 
@@ -202,7 +234,129 @@ int Acquisition::activate(){
         // with a maximum transmission size (GetMaxQuantCount())
         analogInputDevices[i]->CreateCompatibleBuffer(&analogBuffers[i]);
     }
+
+    std::cout << "[Acquisition] Activating digital input devices" << std::endl;
+     // activate all digital input devices
+    for (int i=0; i < nb_digital_devices; i++){
+        _bstr_t name = digitalInputDevice[i]->GetId();
+
+        // read back the granted frequency
+        double frequency = digitalInputDevice[i]->GetFrequency();
+
+        real_freq_DI.push_back((float)frequency);
+
+        std::cout << name << std::endl << " Frequency: " << frequency << std::endl;
+
+        // let the component create our transmission buffer (convenience function);
+        // actually, it allocates SAFEARRAY according to the nature of the component (e.g. double values for the analog input),
+        // with a maximum transmission size (GetMaxQuantCount())
+        digitalInputDevice[i]->CreateCompatibleBuffer(&digitalBuffers[i]);
+    }
+
+    std::cout << "[Acquisition] Activation complete" << std::endl;
+    std::cout << std::endl;
     
+    return 0;
+}
+
+
+int Acquisition::update(){
+    /**
+     * Read the new values of the signals and update the data
+     * 
+     * Return 0 if everything is ok, or the error otherwise 
+     * 
+     */
+
+    LONG state = device->Transfer();
+
+    if (state & Easy2AcquireCom::TransferDataReady){
+
+        std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
+
+        // get the updated data for all the analog input devices
+        for (int i=0; i < nb_analog_devices; i++){
+
+            // get the number of received quants from the component
+            LONG quant_count = analogInputDevices[i]->GetQuantCount();
+
+            // get the received quants into the pre-allocated buffer
+            analogInputDevices[i]->GetQuants(0, quant_count, &analogBuffers[i], 0);
+
+            const double* quants = (const double*) analogBuffers[i].GetVARIANT().parray->pvData;
+
+            double sumquants = 0;
+            for (int j=0; j<quant_count; j++){
+                sumquants += quants[j];
+            }
+
+            tmp_data[i]=sumquants/quant_count;
+
+            // print how many quants received
+            std::cout << " analog channel " << i << ": " << quant_count << " quants " << std::endl;
+           
+            // std::cout << "data: ";
+            // for(int j=0; j<quant_count; j++ ){
+            //     std::cout << quants[j] << ", ";
+            // }
+            // std::cout << std::endl;
+
+            
+
+        }
+
+        // get the updated data for all the digital input devices
+        for (int i=0; i < nb_digital_devices; i++){
+
+            // get the number of received quants from the component
+            LONG quant_count = digitalInputDevice[i]->GetQuantCount();
+
+            // get the received quants into the pre-allocated buffer
+            digitalInputDevice[i]->GetQuants(0, quant_count, &digitalBuffers[i], 0);
+
+            const double* quants = (const double*) digitalBuffers[i].GetVARIANT().parray->pvData;
+
+            double sumquants = 0;
+            for (int j=0; j<quant_count; j++){
+                sumquants += quants[j];
+            }
+
+            tmp_data[nb_analog_devices+i]=sumquants/quant_count;
+
+            // print how many quants received
+            std::cout << "digital channel " << i << ": " << quant_count << " quants " << std::endl;
+            
+            // std::cout << "data: ";
+            // for(int j=0; j<quant_count; j++ ){
+            //     std::cout << quants[j] << ", ";
+            // }
+            // std::cout << std::endl;
+
+            
+
+        }
+
+        // for(int j=0; j<tmp_data.size(); j++){
+        //     std::cout << tmp_data[j] << "  ";
+        // }
+        // std::cout << std::endl;
+        
+        
+        return 0;
+    }else{
+        return -1;
+    }
     
+
+    // return 0;
+}
+
+int Acquisition::getlatest(){
+
+    /**
+     *  return the latest set of values 
+     * 
+     */
+
     return 0;
 }
