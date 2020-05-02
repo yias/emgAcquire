@@ -1,4 +1,6 @@
 
+#include "socketStream.h"
+#include "jsonWrapper.hpp"
 #include "Acquisition.h"
 #include <chrono>
 #include <thread>
@@ -13,6 +15,37 @@ int main(int argc, char **argv){
 
     if(emgAcq.initialize(freq, nb_channels)<0){
         std::cout << "Unable to initialize devices" << std::endl;
+        return -1;
+    }
+
+    // define the variable that holds the server IP. In this case, the server would be a local server.
+    const char *srvIP = "localhost";
+
+    int svrPort = 10352;
+
+    // if no new server IP is defined from the user, continue with the pre-defined server IP (localhost)
+    if(argc!=2){
+        std::cout << "No server IP provided. Continue with localhost" << std::endl;
+    }else{
+        srvIP=argv[1];
+    }
+
+    // create an sockectStream object with the selected server IP address and set it up as a server
+    socketStream svrHdlr(srvIP, svrPort, SOCKETSTREAM::SOCKETSTREAM_SERVER);
+
+    // decalre a variable as a vector of strings for containing the fields of the message
+    std::vector <std::string> fields;
+
+    // define the name of the fields
+    fields.push_back("type");
+    fields.push_back("data");
+    fields.push_back("desired_freq");
+    fields.push_back("real_freq");
+    fields.push_back("nb_channels");
+
+    // initialize the message by setting the fields' names
+    if(svrHdlr.initialize_msgStruct(fields)<0){
+        std::cerr << "Unable to inizialize message structure" << std::endl;
         return -1;
     }
 

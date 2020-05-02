@@ -16,13 +16,17 @@
             "command": "cl.exe",
             "args": [
                 "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
                 "/Zi",
                 "/EHsc",
                 "/Fe:",
                 "${workspaceFolder}\\build\\emgAcquire.exe",
                 "${workspaceFolder}\\src\\emgAcquire.cpp",
-                "${workspaceFolder}\\src\\Acquisition.cpp"
-
+                "${workspaceFolder}\\src\\Acquisition.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp"
             ],
             "group": "build",
             "presentation":{
