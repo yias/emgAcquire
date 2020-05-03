@@ -24,6 +24,7 @@
 class Acquisition{
     
     float sampling_frequency;
+    std::string device_name;
 
     Easy2AcquireCom::IDeviceManagerPtr dm;                                              // device manager
     Easy2AcquireCom::IDevicePtr device;                                                 // the device from which to acquire the data
@@ -65,6 +66,11 @@ public:
     
     std::vector< std::vector<double> > getlatestDigital();
     std::vector< std::vector<double> > getlatestDigital(bool* isNew);
+
+    std::string getDeviceName();
+    float getSamplingFrequency();
+    float getRealSamplingFrequency();
+    std::vector<int> getNumberOfChannels();
     
     int runContinuously();
     int stop();

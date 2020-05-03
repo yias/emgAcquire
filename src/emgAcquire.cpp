@@ -37,17 +37,73 @@ int main(int argc, char **argv){
     std::vector <std::string> fields;
 
     // define the name of the fields
-    fields.push_back("type");
-    fields.push_back("data");
-    fields.push_back("desired_freq");
-    fields.push_back("real_freq");
-    fields.push_back("nb_channels");
+    fields.push_back("device_name");    // 0
+    fields.push_back("type");           // 1
+    fields.push_back("desired_freq");   // 2
+    fields.push_back("device_freq");    // 3
+    fields.push_back("nb_channels");    // 4
+    fields.push_back("data");           // 5
 
+    
     // initialize the message by setting the fields' names
     if(svrHdlr.initialize_msgStruct(fields)<0){
         std::cerr << "Unable to inizialize message structure" << std::endl;
         return -1;
     }
+
+
+    // update the message with acquisition information
+    const char *dev_name = emgAcq.getDeviceName().c_str();
+    if(svrHdlr.updateMSG(fields[0], dev_name)){
+        std::cerr << "Unable to update the message" << std::endl;
+        return -2;
+    }
+
+
+    if(svrHdlr.updateMSG(fields[1], "EMG") ){
+        std::cerr << "Unable to update the message" << std::endl;
+        return -2;
+    }
+
+
+    if(svrHdlr.updateMSG(fields[2], (double)emgAcq.getSamplingFrequency()) ){
+        std::cerr << "Unable to update the message" << std::endl;
+        return -2;
+    }
+
+    
+    if(svrHdlr.updateMSG(fields[3], 1500.0) ){ // (double)emgAcq.getRealSamplingFrequency()
+        std::cerr << "Unable to update the message" << std::endl;
+        return -2;
+    }
+
+    
+    if(svrHdlr.updateMSG(fields[4], emgAcq.getNumberOfChannels()) ){
+        std::cerr << "Unable to update the message" << std::endl;
+        return -2;
+    }
+
+    
+    // // define a 2D matrix and update the field "data" of the message
+    // double t_value1[] = {1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452,1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45};
+    // double t_value2[] = {3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452,1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45};
+    // std::vector< std::vector<double> > t_value(2);
+    // t_value[0]=std::vector<double>(t_value1, t_value1 +(sizeof(t_value1)/sizeof(t_value1[0])));
+    // t_value[1]=std::vector<double>(t_value2, t_value2 +(sizeof(t_value2)/sizeof(t_value2[0])));
+
+    
+    // if(svrHdlr.updateMSG(fields[5], t_value) ){
+    //     std::cerr << "Unable to update the message" << std::endl;
+    //     return -2;
+    // }
+
+
+
+    // svrHdlr.printMSGcontentsTypes();
+
+    // svrHdlr.printMSGcontents();
+
+//***********************************************************************************************************************
 
     std::vector< std::vector<double> > emgData;
 
@@ -71,10 +127,14 @@ int main(int argc, char **argv){
     start = std::chrono::high_resolution_clock::now();
     while(true){
         
-
+        
         emgData = emgAcq.getlatest(&isNewMsg);
         if(isNewMsg){
-            std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
+            // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
+            if(svrHdlr.updateMSG(fields[5], emgData) ){
+                std::cerr << "Unable to update the message" << std::endl;
+                return -2;
+            }
             end = std::chrono::high_resolution_clock::now();
             timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
             // std::cout << "te: " << timeEllapsed << std::endl;
@@ -121,6 +181,8 @@ int main(int argc, char **argv){
 
     std::cout << "average update time: " << aveUpdate << " ms" << std::endl;
     std::cout << "average frequency: " << 1/(aveUpdate/1000.0) << " Hz" << std::endl;
+
+//***********************************************************************************************************************
 
     // sumUpdate = 0;
     // // find the average computational time and print it in the terminal

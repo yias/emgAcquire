@@ -50,7 +50,7 @@ Acquisition::~Acquisition(){
         threadMutex.unlock();
         continuousAcquirer.join();
     }
-    
+
     // close the COM library gracefully
     CoUninitialize();
     std::cout << "[Acquisition] COM closed" << std::endl;
@@ -67,6 +67,9 @@ int Acquisition::printComponents(std::string t_prefix){
     for(int i = 0; i < count; ++i)
     {
         BSTR tag = ((BSTR*)tags->pvData) [i];
+        if(t_prefix.compare("device")==0){
+            device_name = device->GetTagName(tag);
+        }
         std::cout << "[Acquisition] #" << i+1 << " " << tag << " (" << device->GetTagName(tag) << ")" << std::endl;
     }
 
@@ -89,6 +92,7 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
 
     // print the device information
     std::cout << "[Acquisition] Devices:" << std::endl;
+    
     if(printComponents("device")<0){
         std::cout << "[Acquisition] Unable to print devices" << std::endl;
     }
@@ -508,4 +512,37 @@ int Acquisition::stop(){
     }
 
     return 0;
+}
+
+std::string Acquisition::getDeviceName(){
+
+    return device_name;
+}
+
+
+float Acquisition::getSamplingFrequency(){
+
+    return sampling_frequency;
+}
+
+
+std::vector<int> Acquisition::getNumberOfChannels(){
+
+    std::vector<int> nbChannels;
+
+    if(nb_analog_devices>0){
+        nbChannels.push_back(nb_analog_devices);
+    }
+    
+    if(nb_digital_devices>0){
+        nbChannels.push_back(nb_digital_devices);
+    }
+
+    return nbChannels;
+    
+}
+
+float Acquisition::getRealSamplingFrequency(){
+
+    return real_freq_AI[0];
 }
