@@ -36,10 +36,21 @@ Acquisition::Acquisition(){
 
     nb_analog_devices = 0;
     nb_digital_devices = 0;
+    isContinuous = false;
+    isSetNew = false;
         
 }
 
 Acquisition::~Acquisition(){
+
+    if(isContinuous){
+        std::cout << "[Acquisition] Breaking continuous acquisition" << std::endl;
+        threadMutex.lock();
+        isContinuous = false;
+        threadMutex.unlock();
+        continuousAcquirer.join();
+    }
+    
     // close the COM library gracefully
     CoUninitialize();
     std::cout << "[Acquisition] COM closed" << std::endl;
@@ -289,7 +300,9 @@ int Acquisition::update(){
 
             const double* quants = (const double*) analogBuffers[i].GetVARIANT().parray->pvData;
 
+            threadMutex.lock();
             analogData[i] = std::vector<double>(quants, quants + quant_count); 
+            threadMutex.unlock();
 
             // double sumquants = 0;
             // for (int j=0; j<quant_count; j++){
@@ -323,7 +336,9 @@ int Acquisition::update(){
 
             const double* quants = (const double*) digitalBuffers[i].GetVARIANT().parray->pvData;
 
+            threadMutex.lock();
             digitalData[i] = std::vector<double>(quants, quants + quant_count);
+            threadMutex.unlock();
 
             // double sumquants = 0;
             // for (int j=0; j<quant_count; j++){
@@ -361,14 +376,136 @@ int Acquisition::update(){
     // return 0;
 }
 
-int Acquisition::getlatest(){
+std::vector< std::vector<double> > Acquisition::getlatestAnalog(){
 
-    /**
-     *  return the latest set of values 
+    /*
+     *  return the latest set of alalog values 
      * 
      */
 
+    return analogData;
+}
 
+std::vector< std::vector<double> > Acquisition::getlatestAnalog(bool* isNew){
+
+    /*
+     *  return the latest set of alalog values 
+     * 
+     */
+
+    *isNew = isSetNew;
+    if(isSetNew){
+        threadMutex.lock();
+        isSetNew = false;
+        threadMutex.unlock();
+    }
+
+    return analogData;
+}
+
+std::vector< std::vector<double> > Acquisition::getlatestDigital(){
+
+    /*
+     *  return the latest set of digital values 
+     * 
+     */
+
+    return digitalData;
+}
+
+std::vector< std::vector<double> > Acquisition::getlatestDigital(bool* isNew){
+
+    /*
+     *  return the latest set of digital values 
+     * 
+     */
+
+    *isNew = isSetNew;
+    if(isSetNew){
+        threadMutex.lock();
+        isSetNew = false;
+        threadMutex.unlock();
+    }
+
+    return digitalData;
+}
+
+std::vector< std::vector<double> > Acquisition::getlatest(){
+
+    /*
+     *  return the latest set of values 
+     * 
+     */
+    
+    std::lock_guard<std::mutex> lck (threadMutex);
+    
+    std::vector< std::vector<double> > returnVector = analogData;
+    returnVector.reserve(analogData.size() + digitalData.size());
+    returnVector.insert(returnVector.end(), digitalData.begin(), digitalData.end());
+
+
+    return returnVector;
+}
+
+std::vector< std::vector<double> > Acquisition::getlatest(bool* isNew){
+
+    /*
+     *  return the latest set of values 
+     * 
+     */
+    
+    std::lock_guard<std::mutex> lck (threadMutex);
+
+    *isNew = isSetNew;
+    if(isSetNew){
+        isSetNew = false;
+    }
+    
+    std::vector< std::vector<double> > returnVector = analogData;
+    returnVector.reserve(analogData.size() + digitalData.size());
+    returnVector.insert(returnVector.end(), digitalData.begin(), digitalData.end());
+
+
+    return returnVector;
+}
+
+int Acquisition::continuousUpdate(){
+
+    while(isContinuous){
+        update();
+        if(!isSetNew){
+            isSetNew = true;
+        }
+        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/sampling_frequency)-2));
+    }
+
+    std::cout << "[Acquisition] Stopped acquiring signals continuously" << std::endl;
+
+    return 0;
+}
+
+int Acquisition::runContinuously(){
+
+    isContinuous = true;
+    isSetNew = false;
+    continuousAcquirer = std::thread(&Acquisition::continuousUpdate, this);
+    std::cout << "[Acquisition] Continuous acquisition of the signals has started" << std::endl;
+
+    return 0;
+}
+
+int Acquisition::stop(){
+
+    if(isContinuous){
+        std::cout << "[Acquisition] Breaking continuous acquisition" << std::endl;
+        threadMutex.lock();
+        isContinuous = false;
+        threadMutex.unlock();
+        continuousAcquirer.join();
+    }else{
+        std::cout << "[Acquisition] Continuous acquisition was not set on. Nothing to stop." << std::endl;
+        return -1;
+    }
 
     return 0;
 }

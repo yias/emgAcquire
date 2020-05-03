@@ -49,6 +49,8 @@ int main(int argc, char **argv){
         return -1;
     }
 
+    std::vector< std::vector<double> > emgData;
+
     // declare a variable to hold the receiving times from the device
     std::vector<double> updateTimings;
     std::vector<double> sleepingTimings;
@@ -62,25 +64,46 @@ int main(int argc, char **argv){
     std::chrono::milliseconds timespan((int)(1000.0/freq));
 
     emgAcq.activate();
+    
+    emgAcq.runContinuously();
+    bool isNewMsg = false;
+
     start = std::chrono::high_resolution_clock::now();
     while(true){
         
-        if(emgAcq.update()==0){
 
+        emgData = emgAcq.getlatest(&isNewMsg);
+        if(isNewMsg){
+            std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
             end = std::chrono::high_resolution_clock::now();
             timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
             // std::cout << "te: " << timeEllapsed << std::endl;
             // std::cout << "te int: " << (int)timeEllapsed << std::endl;
             start = std::chrono::high_resolution_clock::now();
             updateTimings.push_back(timeEllapsed);
+        }
+
+
+        // if(emgAcq.update()==0){
+
+        //     emgData = emgAcq.getlatest();
+
+        //     // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
+
+        //     end = std::chrono::high_resolution_clock::now();
+        //     timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
+        //     // std::cout << "te: " << timeEllapsed << std::endl;
+        //     // std::cout << "te int: " << (int)timeEllapsed << std::endl;
+        //     start = std::chrono::high_resolution_clock::now();
+        //     updateTimings.push_back(timeEllapsed);
             
 
-            // sleepingTimings.push_back((double) (timespan - (start-end)).count() );
+        //     // sleepingTimings.push_back((double) (timespan - (start-end)).count() );
 
-            std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(48));
-        }else{
-            // std::cout<<"yes\n";
-        }
+        //     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/freq)-2)); // 48
+        // }else{
+        //     // std::cout<<"yes\n";
+        // }
         
         if(kbhit()){
             if(getch()=='q')
@@ -88,6 +111,7 @@ int main(int argc, char **argv){
         }
     }
 
+    emgAcq.stop();
     double sumUpdate = 0;
     // find the average computational time and print it in the terminal
     for(auto& n: updateTimings){

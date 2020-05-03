@@ -17,6 +17,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <thread>
+#include <mutex>
 
 
 class Acquisition{
@@ -30,7 +32,6 @@ class Acquisition{
     std::vector<Easy2AcquireCom::IAnalogInputPtr> analogInputDevices;                   // analog input devices (for emg)
     std::vector< std::vector<double> > analogData;                                      // data from the analog inputs
     std::vector< _variant_t > analogBuffers;                                            // buffers for the analog inputs
-    // double **analogBuffers;
     std::vector<float> real_freq_AI;                                                    // the real frequencies of the analog inputs
 
     unsigned int nb_digital_devices;                                                    // number of digital-input devices
@@ -39,15 +40,35 @@ class Acquisition{
     std::vector< _variant_t > digitalBuffers;                                           // buffers for the digital inputs
     std::vector<float> real_freq_DI;                                                    // the real frequencies of the digital inputs
 
+    std::thread continuousAcquirer;
+    std::mutex threadMutex;
+    bool isContinuous;
+    bool isSetNew;
+
     int printComponents(std::string t_prefix);
     int initializeInput(LONG index, _bstr_t type);
+    int continuousUpdate();
 
 public:
+
+    Acquisition();
+
     int initialize(float freq, unsigned int selected_nb_signals=0);
     int activate();
+    
     int update();
-    int getlatest();
-    Acquisition();
+    std::vector< std::vector<double> > getlatest();
+    std::vector< std::vector<double> > getlatest(bool* isNew);
+
+    std::vector< std::vector<double> > getlatestAnalog();
+    std::vector< std::vector<double> > getlatestAnalog(bool* isNew);
+    
+    std::vector< std::vector<double> > getlatestDigital();
+    std::vector< std::vector<double> > getlatestDigital(bool* isNew);
+    
+    int runContinuously();
+    int stop();
+
     ~Acquisition();
 };
 
