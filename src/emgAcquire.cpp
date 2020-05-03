@@ -11,7 +11,7 @@ int main(int argc, char **argv){
     Acquisition emgAcq;
 
     float freq = 20.0;
-    int nb_channels = 16;
+    int nb_channels = 2;
 
     if(emgAcq.initialize(freq, nb_channels)<0){
         std::cout << "Unable to initialize devices" << std::endl;
@@ -54,7 +54,7 @@ int main(int argc, char **argv){
 
     // update the message with acquisition information
     const char *dev_name = emgAcq.getDeviceName().c_str();
-    if(svrHdlr.updateMSG(fields[0], dev_name)){
+    if(svrHdlr.updateMSG(fields[0], "Noraxon Desk Receiver")){
         std::cerr << "Unable to update the message" << std::endl;
         return -2;
     }
@@ -84,26 +84,10 @@ int main(int argc, char **argv){
     }
 
     
-    // // define a 2D matrix and update the field "data" of the message
-    // double t_value1[] = {1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452,1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45};
-    // double t_value2[] = {3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452,1.5, 4.67, 50.095, 14.99, 12, 45.11, 7.986, 134.67, 99.324, 0.452, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45, 3.2, 15.4, 1502.898, 12, 5.4, 0.569, 12.33, 5311.1, 234.22, 14.45};
-    // std::vector< std::vector<double> > t_value(2);
-    // t_value[0]=std::vector<double>(t_value1, t_value1 +(sizeof(t_value1)/sizeof(t_value1[0])));
-    // t_value[1]=std::vector<double>(t_value2, t_value2 +(sizeof(t_value2)/sizeof(t_value2[0])));
-
-    
-    // if(svrHdlr.updateMSG(fields[5], t_value) ){
-    //     std::cerr << "Unable to update the message" << std::endl;
-    //     return -2;
-    // }
-
-
-
     // svrHdlr.printMSGcontentsTypes();
 
     // svrHdlr.printMSGcontents();
 
-//***********************************************************************************************************************
 
     std::vector< std::vector<double> > emgData;
 
@@ -111,18 +95,29 @@ int main(int argc, char **argv){
     std::vector<double> updateTimings;
     std::vector<double> sleepingTimings;
 
-    // define an object to hold the current time
+    // define objects to hold the current and elapsed time
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
-    double timeEllapsed;
+    double timeElapsed;
 
     // define sleep time for keepring the frequency
     std::chrono::milliseconds timespan((int)(1000.0/freq));
 
+    // initialize socketStream
+    svrHdlr.initialize_socketStream();
+
+    // activate the server
+    svrHdlr.runServer();
+
+    // activate acquisition
     emgAcq.activate();
     
+    // set the acquisition to run continuously in the background
     emgAcq.runContinuously();
     bool isNewMsg = false;
+
+    //debug
+    std::string msg;
 
     start = std::chrono::high_resolution_clock::now();
     while(true){
@@ -131,16 +126,24 @@ int main(int argc, char **argv){
         emgData = emgAcq.getlatest(&isNewMsg);
         if(isNewMsg){
             // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
+            
             if(svrHdlr.updateMSG(fields[5], emgData) ){
-                std::cerr << "Unable to update the message" << std::endl;
-                return -2;
+                std::cerr << "[emgAcquire] Unable to update the message" << std::endl;
             }
+
+            // msg=svrHdlr.getFullmsg();
+            // jsonWrapper testObj(msg);
+            
+            if(svrHdlr.socketStream_ok()){
+                svrHdlr.sendMSg2Client("listener");
+            }
+
             end = std::chrono::high_resolution_clock::now();
-            timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
-            // std::cout << "te: " << timeEllapsed << std::endl;
-            // std::cout << "te int: " << (int)timeEllapsed << std::endl;
+
+            timeElapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
+            
             start = std::chrono::high_resolution_clock::now();
-            updateTimings.push_back(timeEllapsed);
+            updateTimings.push_back(timeElapsed);
         }
 
 
@@ -182,15 +185,10 @@ int main(int argc, char **argv){
     std::cout << "average update time: " << aveUpdate << " ms" << std::endl;
     std::cout << "average frequency: " << 1/(aveUpdate/1000.0) << " Hz" << std::endl;
 
-//***********************************************************************************************************************
 
-    // sumUpdate = 0;
-    // // find the average computational time and print it in the terminal
-    // for(auto& n: sleepingTimings){
-    //     sumUpdate +=n;
-    // }
-    // aveUpdate= sumUpdate/(double)updateTimings.size();
-    // std::cout << "average sleeping time: " << aveUpdate << " ms" << std::endl;
+    // kill all the connections and the socket
+    svrHdlr.closeCommunication();
 
     return 0;
+
 }

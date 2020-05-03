@@ -33,6 +33,30 @@
                 "reveal": "always",
             },
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build client (Windows)",
+            "type": "shell",
+            "command": "cl.exe",
+            "args": [
+                "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "/Zi",
+                "/EHsc",
+                "/Fe:",
+                "${workspaceFolder}\\build\\emgAcquire_client.exe",
+                "${workspaceFolder}\\client_examples\\client_example.cpp",
+                // "${workspaceFolder}\\src\\Acquisition.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp"
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
         }
     ]
 }
