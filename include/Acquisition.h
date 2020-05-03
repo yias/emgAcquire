@@ -30,6 +30,7 @@ class Acquisition{
     std::vector<Easy2AcquireCom::IAnalogInputPtr> analogInputDevices;                   // analog input devices (for emg)
     std::vector< std::vector<double> > analogData;                                      // data from the analog inputs
     std::vector< _variant_t > analogBuffers;                                            // buffers for the analog inputs
+    // double **analogBuffers;
     std::vector<float> real_freq_AI;                                                    // the real frequencies of the analog inputs
 
     unsigned int nb_digital_devices;                                                    // number of digital-input devices

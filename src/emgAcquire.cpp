@@ -10,8 +10,8 @@ int main(int argc, char **argv){
 
     Acquisition emgAcq;
 
-    float freq = 10.0;
-    int nb_channels = 2;
+    float freq = 20.0;
+    int nb_channels = 16;
 
     if(emgAcq.initialize(freq, nb_channels)<0){
         std::cout << "Unable to initialize devices" << std::endl;
@@ -51,26 +51,33 @@ int main(int argc, char **argv){
 
     // declare a variable to hold the receiving times from the device
     std::vector<double> updateTimings;
+    std::vector<double> sleepingTimings;
 
     // define an object to hold the current time
-    auto start = std::chrono::steady_clock::now();
-    auto end = std::chrono::steady_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    double timeEllapsed;
 
     // define sleep time for keepring the frequency
     std::chrono::milliseconds timespan((int)(1000.0/freq));
 
     emgAcq.activate();
-    start = std::chrono::steady_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     while(true){
         
         if(emgAcq.update()==0){
 
-            end = std::chrono::steady_clock::now();
-            updateTimings.push_back((double)std::chrono::duration_cast<std::chrono::microseconds>(end-start).count()/1000.0);
+            end = std::chrono::high_resolution_clock::now();
+            timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
+            // std::cout << "te: " << timeEllapsed << std::endl;
+            // std::cout << "te int: " << (int)timeEllapsed << std::endl;
+            start = std::chrono::high_resolution_clock::now();
+            updateTimings.push_back(timeEllapsed);
+            
 
-            start = std::chrono::steady_clock::now();
+            // sleepingTimings.push_back((double) (timespan - (start-end)).count() );
 
-            std::this_thread::sleep_for(timespan - (start - end));
+            std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(48));
         }else{
             // std::cout<<"yes\n";
         }
@@ -87,8 +94,17 @@ int main(int argc, char **argv){
         sumUpdate +=n;
     }
     double aveUpdate= sumUpdate/(double)updateTimings.size();
+
     std::cout << "average update time: " << aveUpdate << " ms" << std::endl;
     std::cout << "average frequency: " << 1/(aveUpdate/1000.0) << " Hz" << std::endl;
+
+    // sumUpdate = 0;
+    // // find the average computational time and print it in the terminal
+    // for(auto& n: sleepingTimings){
+    //     sumUpdate +=n;
+    // }
+    // aveUpdate= sumUpdate/(double)updateTimings.size();
+    // std::cout << "average sleeping time: " << aveUpdate << " ms" << std::endl;
 
     return 0;
 }

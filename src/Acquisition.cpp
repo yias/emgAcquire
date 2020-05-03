@@ -131,6 +131,7 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
             return -i-1;
         }
     }
+    analogData = std::vector< std::vector<double> >(nb_analog_devices, std::vector<double>());
 
     for(int i=0; i<nb_digital_devices; i++){
 
@@ -139,6 +140,7 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
             return -i-1;
         }
     }
+    digitalData = std::vector< std::vector<double> >(nb_digital_devices, std::vector<double>());
 
     // std::cout << "Number of initialized analog inputs: " << analogInputDevices.size() << std::endl;
     // std::cout << "Number of initialized digital inputs: " << digitalInputDevice.size() << std::endl;
@@ -233,6 +235,8 @@ int Acquisition::activate(){
         // actually, it allocates SAFEARRAY according to the nature of the component (e.g. double values for the analog input),
         // with a maximum transmission size (GetMaxQuantCount())
         analogInputDevices[i]->CreateCompatibleBuffer(&analogBuffers[i]);
+        LONG maxQuants = analogInputDevices[i]->GetMaxQuantCount();
+        std::cout << "maximum number of quants: " << maxQuants << std::endl;
     }
 
     std::cout << "[Acquisition] Activating digital input devices" << std::endl;
@@ -272,7 +276,7 @@ int Acquisition::update(){
 
     if (state & Easy2AcquireCom::TransferDataReady){
 
-        std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
+        // std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
 
         // get the updated data for all the analog input devices
         for (int i=0; i < nb_analog_devices; i++){
@@ -285,15 +289,18 @@ int Acquisition::update(){
 
             const double* quants = (const double*) analogBuffers[i].GetVARIANT().parray->pvData;
 
-            double sumquants = 0;
-            for (int j=0; j<quant_count; j++){
-                sumquants += quants[j];
-            }
+            analogData[i] = std::vector<double>(quants, quants + quant_count); 
 
-            tmp_data[i]=sumquants/quant_count;
+            // double sumquants = 0;
+            // for (int j=0; j<quant_count; j++){
+            //     sumquants += quants[j];
+            // }
+
+            // tmp_data[i]=sumquants/quant_count;
 
             // print how many quants received
-            std::cout << " analog channel " << i << ": " << quant_count << " quants " << std::endl;
+            // if(i==0)
+            //     std::cout << "quants " << quant_count << "size: " << analogData[i].size() << std::endl;
            
             // std::cout << "data: ";
             // for(int j=0; j<quant_count; j++ ){
@@ -316,15 +323,18 @@ int Acquisition::update(){
 
             const double* quants = (const double*) digitalBuffers[i].GetVARIANT().parray->pvData;
 
-            double sumquants = 0;
-            for (int j=0; j<quant_count; j++){
-                sumquants += quants[j];
-            }
+            digitalData[i] = std::vector<double>(quants, quants + quant_count);
 
-            tmp_data[nb_analog_devices+i]=sumquants/quant_count;
+            // double sumquants = 0;
+            // for (int j=0; j<quant_count; j++){
+            //     sumquants += quants[j];
+            // }
+
+            // tmp_data[nb_analog_devices+i]=sumquants/quant_count;
 
             // print how many quants received
-            std::cout << "digital channel " << i << ": " << quant_count << " quants " << std::endl;
+            // if(i==0)
+            //     std::cout << "quants "<<  quant_count  << std::endl;
             
             // std::cout << "data: ";
             // for(int j=0; j<quant_count; j++ ){
@@ -357,6 +367,8 @@ int Acquisition::getlatest(){
      *  return the latest set of values 
      * 
      */
+
+
 
     return 0;
 }
