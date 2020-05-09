@@ -1,194 +1,365 @@
+/** 
+ *  Copyright (c) 2020 Iason Batzianoulis
+ *  
+ *  emgAcquire source file
+ *  
+ * 
+ *  Developer:  Iason Batzianoulis
+ *  email:      iasonbatz@gmail.com
+ *  License:    MIT
+ * 
+**/
 
-#include "socketStream.h"
-#include "jsonWrapper.hpp"
-#include "Acquisition.h"
-#include <chrono>
-#include <thread>
+#include "emgAcquire.h"
 
-
-int main(int argc, char **argv){
-
-    Acquisition emgAcq;
-
-    float freq = 20.0;
-    int nb_channels = 2;
-
-    if(emgAcq.initialize(freq, nb_channels)<0){
-        std::cout << "Unable to initialize devices" << std::endl;
-        return -1;
+#ifdef _WIN32
+        std::wstring utf8ToUtf16(const std::string& utf8Str){
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+        return conv.from_bytes(utf8Str);
     }
 
-    // define the variable that holds the server IP. In this case, the server would be a local server.
-    const char *srvIP = "localhost";
+    std::string utf16ToUtf8(const std::wstring& utf16Str){
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+        return conv.to_bytes(utf16Str);
+    }
 
-    int svrPort = 10352;
+    int emgAcquire::getComputerName(std::string *pc_name) {
+        wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+        DWORD cchBufferSize = sizeof(buffer) / sizeof(buffer[0]);
+        if (!GetComputerNameW(buffer, &cchBufferSize)){
+            return -1;
+        }
+            
+        const std::wstring compName = std::wstring(&buffer[0]);
+        *pc_name = utf16ToUtf8(compName);
+        return 0;
+    }
+#endif
 
-    // if no new server IP is defined from the user, continue with the pre-defined server IP (localhost)
-    if(argc!=2){
-        std::cout << "No server IP provided. Continue with localhost" << std::endl;
+
+emgAcquire::Client::Client(unsigned int nb_ch){
+
+    // comunication related variables
+    hostIP = std::string(emgAcquire::DEFAULT_SVR_IP);
+    svrPort = emgAcquire::DEFAULT_SVR_PORT;
+    std::string pc_name;
+    if (emgAcquire::getComputerName(&pc_name)<0){
+        std::cout << "[emgAcquireClient] Unable to get computer's name. Continue with a standard string" << std::endl;
+        pc_name = "unknownPC";
+    }
+    clName = "emgAcquireClient_on_" + pc_name;
+
+    isNewMsgReceived = false;
+
+    // functionality varaibles
+    frequency = emgAcquire::DEFAULT_FREQUENCY;
+
+    nb_channels_received = nb_ch;
+
+    bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
+
+    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+    interpolate = false;
+
+    giveDigitalSignal = false;
+
+    isRunning = false;
+}
+
+
+emgAcquire::Client::Client(float freq){
+    
+    // comunication related variables
+    hostIP = std::string(emgAcquire::DEFAULT_SVR_IP);
+    svrPort = emgAcquire::DEFAULT_SVR_PORT;
+    std::string pc_name;
+    if (emgAcquire::getComputerName(&pc_name)<0){
+        std::cout << "[emgAcquireClient] Unable to get computer's name. Continue with a standard string" << std::endl;
+        pc_name = "unknownPC";
+    }
+    clName = "emgAcquireClient_on_" + pc_name;
+
+    isNewMsgReceived = false;
+
+    // functionality varaibles
+    frequency = freq;
+
+    nb_channels_received = emgAcquire::DEFAULT_NB_CHANNELS;
+
+    bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
+
+    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+    interpolate = false;
+
+    giveDigitalSignal = false;
+
+    isRunning = false;
+    
+}
+
+
+emgAcquire::Client::Client(float freq, unsigned int nb_ch){
+
+    // comunication related variables
+    hostIP = std::string(emgAcquire::DEFAULT_SVR_IP);
+    svrPort = emgAcquire::DEFAULT_SVR_PORT;
+    std::string pc_name;
+    if (emgAcquire::getComputerName(&pc_name)<0){
+        std::cout << "[emgAcquireClient] Unable to get computer's name. Continue with a standard string" << std::endl;
+        pc_name = "unknownPC";
+    }
+    clName = "emgAcquireClient_on_" + pc_name;
+
+    isNewMsgReceived = false;
+
+    // functionality varaibles
+    frequency = freq;
+
+    nb_channels_received = nb_ch;
+
+    bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
+
+    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+    interpolate = false;
+
+    giveDigitalSignal = false;
+
+    isRunning = false;
+
+}
+
+
+emgAcquire::Client::Client(std::string srvIP){
+    
+    // comunication related variables
+    hostIP = srvIP;
+    svrPort = emgAcquire::DEFAULT_SVR_PORT;
+    std::string pc_name;
+    if (emgAcquire::getComputerName(&pc_name)<0){
+        std::cout << "[emgAcquireClient] Unable to get computer's name. Continue with a standard string" << std::endl;
+        pc_name = "unknownPC";
+    }
+    clName = "emgAcquireClient_on_" + pc_name;
+
+    isNewMsgReceived = false;
+
+    // functionality varaibles
+    frequency = emgAcquire::DEFAULT_FREQUENCY;
+
+    nb_channels_received = emgAcquire::DEFAULT_NB_CHANNELS;
+
+    bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
+
+    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+    interpolate = false;
+
+    giveDigitalSignal = false;
+
+    isRunning = false;
+
+}
+
+emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, unsigned int nb_ch){
+    
+    // comunication related variables
+    hostIP = srvIP;
+    svrPort = port;
+    std::string pc_name;
+    if (emgAcquire::getComputerName(&pc_name)<0){
+        std::cout << "[emgAcquireClient] Unable to get computer's name. Continue with a standard string" << std::endl;
+        pc_name = "unknownPC";
+    }
+    clName = "emgAcquireClient_on_" + pc_name;
+
+    isNewMsgReceived = false;
+
+    // functionality varaibles
+    frequency = freq;
+
+    nb_channels_received = nb_ch;
+
+    bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
+
+    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+    interpolate = false;
+
+    giveDigitalSignal = false;
+
+    isRunning = false;
+
+}
+
+
+int emgAcquire::Client::setNBofChannels(unsigned int nb_ch){
+
+    /**
+     *  setting a new number of channels for returning to the client. 
+     *  
+     *  nb_ch:  the desired number of channels to returned
+     *
+     *  Returns:
+     *      0: if the new number of channels has been set correctly
+     *     -1: otherwise
+     */
+    
+
+    if (nb_ch <= emgAcquire::MAXIMUM_NB_CHANNELS){
+        nb_channels_received = nb_ch;
+        return 0;
     }else{
-        srvIP=argv[1];
-    }
-
-    // create an sockectStream object with the selected server IP address and set it up as a server
-    socketStream svrHdlr(srvIP, svrPort, SOCKETSTREAM::SOCKETSTREAM_SERVER);
-
-    // decalre a variable as a vector of strings for containing the fields of the message
-    std::vector <std::string> fields;
-
-    // define the name of the fields
-    fields.push_back("device_name");    // 0
-    fields.push_back("type");           // 1
-    fields.push_back("desired_freq");   // 2
-    fields.push_back("device_freq");    // 3
-    fields.push_back("nb_channels");    // 4
-    fields.push_back("data");           // 5
-
-    
-    // initialize the message by setting the fields' names
-    if(svrHdlr.initialize_msgStruct(fields)<0){
-        std::cerr << "Unable to inizialize message structure" << std::endl;
+        std::cout << "[emgAcquireClient] The number of channels cannot be greater than " << emgAcquire::MAXIMUM_NB_CHANNELS << std::endl;
+        std::cout << "[emgAcquireClient] The number of channels has not been changed. The current number of channels size is: " << nb_channels_received << std::endl;
         return -1;
     }
-
-
-    // update the message with acquisition information
-    const char *dev_name = emgAcq.getDeviceName().c_str();
-    if(svrHdlr.updateMSG(fields[0], "Noraxon Desk Receiver")){
-        std::cerr << "Unable to update the message" << std::endl;
-        return -2;
-    }
-
-
-    if(svrHdlr.updateMSG(fields[1], "EMG") ){
-        std::cerr << "Unable to update the message" << std::endl;
-        return -2;
-    }
-
-
-    if(svrHdlr.updateMSG(fields[2], (double)emgAcq.getSamplingFrequency()) ){
-        std::cerr << "Unable to update the message" << std::endl;
-        return -2;
-    }
-
-    
-    if(svrHdlr.updateMSG(fields[3], 1500.0) ){ // (double)emgAcq.getRealSamplingFrequency()
-        std::cerr << "Unable to update the message" << std::endl;
-        return -2;
-    }
-
-    
-    if(svrHdlr.updateMSG(fields[4], emgAcq.getNumberOfChannels()) ){
-        std::cerr << "Unable to update the message" << std::endl;
-        return -2;
-    }
-
-    
-    // svrHdlr.printMSGcontentsTypes();
-
-    // svrHdlr.printMSGcontents();
-
-
-    std::vector< std::vector<double> > emgData;
-
-    // declare a variable to hold the receiving times from the device
-    std::vector<double> updateTimings;
-    std::vector<double> sleepingTimings;
-
-    // define objects to hold the current and elapsed time
-    auto start = std::chrono::high_resolution_clock::now();
-    auto end = std::chrono::high_resolution_clock::now();
-    double timeElapsed;
-
-    // define sleep time for keepring the frequency
-    std::chrono::milliseconds timespan((int)(1000.0/freq));
-
-    // initialize socketStream
-    svrHdlr.initialize_socketStream();
-
-    // activate the server
-    svrHdlr.runServer();
-
-    // activate acquisition
-    emgAcq.activate();
-    
-    // set the acquisition to run continuously in the background
-    emgAcq.runContinuously();
-    bool isNewMsg = false;
-
-    //debug
-    std::string msg;
-
-    start = std::chrono::high_resolution_clock::now();
-    while(true){
-        
-        
-        emgData = emgAcq.getlatest(&isNewMsg);
-        if(isNewMsg){
-            // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
-            
-            if(svrHdlr.updateMSG(fields[5], emgData) ){
-                std::cerr << "[emgAcquire] Unable to update the message" << std::endl;
-            }
-
-            // msg=svrHdlr.getFullmsg();
-            // jsonWrapper testObj(msg);
-            
-            if(svrHdlr.socketStream_ok()){
-                svrHdlr.sendMSg2Client("listener");
-            }
-
-            end = std::chrono::high_resolution_clock::now();
-
-            timeElapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
-            
-            start = std::chrono::high_resolution_clock::now();
-            updateTimings.push_back(timeElapsed);
-        }
-
-
-        // if(emgAcq.update()==0){
-
-        //     emgData = emgAcq.getlatest();
-
-        //     // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
-
-        //     end = std::chrono::high_resolution_clock::now();
-        //     timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count()/1000.0;
-        //     // std::cout << "te: " << timeEllapsed << std::endl;
-        //     // std::cout << "te int: " << (int)timeEllapsed << std::endl;
-        //     start = std::chrono::high_resolution_clock::now();
-        //     updateTimings.push_back(timeEllapsed);
-            
-
-        //     // sleepingTimings.push_back((double) (timespan - (start-end)).count() );
-
-        //     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/freq)-2)); // 48
-        // }else{
-        //     // std::cout<<"yes\n";
-        // }
-        
-        if(kbhit()){
-            if(getch()=='q')
-                break;
-        }
-    }
-
-    emgAcq.stop();
-    double sumUpdate = 0;
-    // find the average computational time and print it in the terminal
-    for(auto& n: updateTimings){
-        sumUpdate +=n;
-    }
-    double aveUpdate= sumUpdate/(double)updateTimings.size();
-
-    std::cout << "average update time: " << aveUpdate << " ms" << std::endl;
-    std::cout << "average frequency: " << 1/(aveUpdate/1000.0) << " Hz" << std::endl;
-
-
-    // kill all the connections and the socket
-    svrHdlr.closeCommunication();
 
     return 0;
+}
 
+
+int emgAcquire::Client::setFrequency(float freq){
+
+    /**
+     *  setting a new frequency for acquiring the signals. 
+     *  
+     *  freq:  the desired frequency in Hz
+     *
+     *  Returns:
+     *      0: if the new frequency has been set correctly
+     *     -1: otherwise
+     */
+    
+
+    if (freq <= emgAcquire::MAXIMUM_FREQUENCY){
+        frequency = freq;
+        return 0;
+    }else{
+        std::cout << "[emgAcquireClient] The acquisition frequency cannot be greater than " << emgAcquire::MAXIMUM_FREQUENCY << " Hz" << std::endl;
+        std::cout << "[emgAcquireClient] The frequency has not been changed. The current frequency size is: " << frequency << std::endl;
+        return -1;
+    }
+   
+}
+
+
+int emgAcquire::Client::setServerIP(std::string svrIP){
+
+    /**
+     *  setting a new IP address for connecting to the server. 
+     *  
+     *  svrIP:  the IP adress of the server
+     *
+     *  Returns:
+     *      0: if the new IP address has been set correctly
+     *     -1: otherwise
+     */
+    
+    hostIP = svrIP;
+
+    if (hostIP.compare(svrIP)==0){
+        return 0;
+    }else{
+        return -1;
+    }
+}
+
+
+int emgAcquire::Client::setServerIP(std::string svrIP, unsigned int port){
+
+    /**
+     *  setting a new IP address and port for connecting to the server. 
+     *  
+     *  svrIP:  the IP adress of the server
+     *  port: the communication port
+     *
+     *  Returns:
+     *      0: if the new IP address and port have been set correctly
+     *     -1: otherwise
+     */
+    
+    hostIP = svrIP;
+    svrPort = port;
+
+    if ((hostIP.compare(svrIP)==0) && (svrPort==port)){
+        return 0;
+    }else{
+        return -1;
+    }
+
+}
+
+
+int emgAcquire::Client::setBufferSize(unsigned int bfrSize){
+
+    /**
+     *  setting a new size of the buffer. It modifies how deep the buffer 
+     *  of the signals would be. 
+     *  
+     *  bfrSize:  the number of samples of each channel to keep in the buffer
+     *
+     *  Returns:
+     *      0: if the size of the buffer has been correctly modified
+     *     -1: if the size of the buffer is not modified
+     */
+
+    if (bfrSize<=emgAcquire::MAXIMUM_BUFFER_SIZE){
+        
+        bufferSize = bfrSize;
+
+        buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+
+        if ((unsigned int)buffer.size()==bfrSize){
+            return 0;
+        }else{
+            return -2;
+        }
+
+    }else{
+        std::cout << "[emgAcquireClient] The new size cannot be greater than the maximum buffer-size(" << emgAcquire::MAXIMUM_BUFFER_SIZE << " samples)" << std::endl;
+        std::cout << "[emgAcquireClient] The buffer has not been changed. The current buffer size is: " << bufferSize << std::endl;
+        return -1;
+    }
+    
+}
+
+
+int emgAcquire::Client::setInterpolation(bool interpol){
+
+    /**
+     *  changing the interpolation flag.
+     *  
+     *  interpol:  the desired interpolation flag.
+     *              ture:   if signal interpolation is desired
+     *              false:  if signal interpolation is not desired
+     *
+     *  Returns:
+     *      0: always
+     */
+    
+    interpolate = interpol;
+
+    return 0;
+}
+
+
+int emgAcquire::Client::setDigitalSignalReturn(bool digSingalReturn){
+
+    /**
+     *  changing the interpolation flag.
+     *  
+     *  interpol:  the desired interpolation flag.
+     *              ture:   to retrieve the digital signal
+     *              false:  not to retrieve the digital signal
+     *
+     *  Returns:
+     *      0: always
+     */
+
+    giveDigitalSignal = digSingalReturn;
+
+    return 0;
 }

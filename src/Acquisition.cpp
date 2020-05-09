@@ -1,7 +1,7 @@
 /** 
  *  Copyright (c) 2020 Iason Batzianoulis
  *  
- *  socketStream source file
+ *  Acquisition source file
  *  
  * 
  *  Developer:  Iason Batzianoulis

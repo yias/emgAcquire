@@ -9,8 +9,9 @@
  *  
 */
 
-#include "socketStream.h"
-#include "jsonWrapper.hpp"
+// #include "socketStream.h"
+// #include "jsonWrapper.hpp"
+#include "emgAcquire.h"
 #include <chrono>
 #include <ctime>
 
