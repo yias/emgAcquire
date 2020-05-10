@@ -37,7 +37,7 @@ namespace emgAcquire{
 
     const char DEFAULT_SVR_IP[] = "localhost";
     const unsigned int DEFAULT_SVR_PORT = 10352;
-    const unsigned int DEFAULT_BUFFER_SIZE = 300;
+    const unsigned int DEFAULT_BUFFER_SIZE = 500;
     const unsigned int MAXIMUM_BUFFER_SIZE = 5000;
     const float DEFAULT_FREQUENCY = 20.0;
     const float MAXIMUM_FREQUENCY = 1500.0;
@@ -51,8 +51,9 @@ namespace emgAcquire{
         unsigned int svrPort;                               // the IP port of the server machine (default is 10352)
         std::string clName;
         bool isNewMsgReceived;                              // a boolean variable for checking if the message is new or not
-        socketStream svrHdlr;                               // socketStream object for handling the communication with the server
+        socketStream comHdlr;                               // socketStream object for handling the communication with the server
         jsonWrapper json_msg;                               // the data of the received message
+        bool isConnected;
         
         std::thread listenerThread;                         // a thread for listening to the server in parallel
         std::mutex threadMutex;                             // a mutex object for handling share memory between threads
@@ -84,10 +85,10 @@ namespace emgAcquire{
 
         std::chrono::high_resolution_clock::time_point give_msg_time;   // a time-point object for stabilizing the frequency of the client
 
-        bool isRunning;                                     // a boolian variable for signalling is the node is running
+        bool isRunning;                                     // a boolian variable for signalling is the node is running (start filling the buffer)
 
         int listening_to_server();                          // a function for listening to the server and acquire the signals asynchronously to the main thread
-        int updateBuffer();                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
+        int updateBuffer(std::vector< std::vector<double> > mdata);                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
         bool updateIsRunning;                               // a flag indicating if the unpdate function is running
 
     public:

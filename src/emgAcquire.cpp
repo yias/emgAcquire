@@ -51,6 +51,8 @@ emgAcquire::Client::Client(unsigned int nb_ch){
 
     isNewMsgReceived = false;
 
+    isConnected = false;
+
     // functionality varaibles
     frequency = emgAcquire::DEFAULT_FREQUENCY;
 
@@ -91,6 +93,8 @@ emgAcquire::Client::Client(float freq){
     clName = "emgAcquireClient_on_" + pc_name;
 
     isNewMsgReceived = false;
+
+    isConnected = false;
 
     // functionality varaibles
     frequency = freq;
@@ -137,6 +141,8 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
 
     isNewMsgReceived = false;
 
+    isConnected = false;
+
     // functionality varaibles
     frequency = freq;
 
@@ -182,6 +188,8 @@ emgAcquire::Client::Client(std::string srvIP){
 
     isNewMsgReceived = false;
 
+    isConnected = false;
+
     // functionality varaibles
     frequency = emgAcquire::DEFAULT_FREQUENCY;
 
@@ -225,6 +233,8 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
     clName = "emgAcquireClient_on_" + pc_name;
 
     isNewMsgReceived = false;
+
+    isConnected = false;
 
     // functionality varaibles
     frequency = freq;
@@ -576,3 +586,110 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
     return returnedMatrix;
 }
+
+
+int emgAcquire::Client::initialize(){
+
+    /**
+     *  initialize the socketStream and attempt a connection to the server 
+     *  
+     *
+     *  Returns:
+     *      0: successfully initialized the socket stream and connected to the server
+     *     -1: unable to initialize socketStream
+     *     -2: unable to connect to the server
+     *     -3: 
+     *     -4: 
+     */
+
+    // initialize the socket
+    if(comHdlr.initialize_socketStream(hostIP.c_str(), svrPort)<0){
+        std::cerr << "[emgAcquireClient] Unable to initialize socketStream" << std::endl;
+        return -1;
+    }
+    
+    std::cout << "[emgAcquireClient] socketStream initialized successfully" << std::endl;
+
+    comHdlr.set_clientName(clName);
+
+    // attemp a connection with the server
+    if(comHdlr.make_connection()<0){
+        std::cerr << "[emgAcquireClient] Unable to connect to " << hostIP << " in the port " << svrPort << std::endl;
+        return -2;
+    }
+
+    isConnected = true;
+
+    std::cout << "[emgAcquireClient] Successful connection to " << hostIP << " in the port " << svrPort << std::endl;
+
+    // starting listener
+    listenerThread = std::thread(&emgAcquire::Client::listening_to_server, this);
+    std::cout << "[emgAcquireClient] Signal acquisition has started" << std::endl;
+
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(20));
+
+    // check if the number of signals received is enough
+    if (nb_channels_received < nb_channels_required){
+        nb_channels_required = nb_channels_received;
+        buffer = std::vector< std::vector<double> > (nb_channels_required + 1, std::vector<double>(bufferSize, 0));
+        bufferIndexes = std::vector<int>(nb_channels_required + 1,-1);
+        threadMutex.lock();
+        std::cout << "[emgAcquireClient] Warning!!!!!" << std::endl;
+        std::cout << "[emgAcquireClient] The number of required signals is greater than the received signals" << std::endl;
+        std::cout << "[emgAcquireClient] Continueing with the number of received signals" << std::endl;
+        std::cout << "[emgAcquireClient] The number of signals is " << nb_channels_required << std::endl;
+        threadMutex.unlock();
+    }
+    
+    return 0;
+}
+
+int emgAcquire::Client::listening_to_server(){
+
+    bool isNew = false;
+    std::string msg;
+    std::vector< std::vector<double> > dataMat;
+
+    while(isConnected){
+        if(comHdlr.socketStream_ok()){
+            msg = comHdlr.get_latest(&isNew);
+            if(isNew){
+                // if the message is new:
+                // parse the json string in a json document
+                json_msg.updateDoc(msg);
+                // jsonWrapper testObj(msg);
+
+                if(isRunning){
+                    // get the contains of the field "data"
+                    dataMat = json_msg.getField<rapidJson_types::Mat2DD>(std::string("data"));
+                    // std::cout << "size of the matrix: " << dataMat.size() << ", " << dataMat[0].size() << std::endl;
+
+                    updateBuffer(dataMat);
+                }
+
+            }          
+        }
+    }
+
+
+
+    return 0;
+}
+
+int emgAcquire::Client::start(){
+    threadMutex.lock();
+    isRunning = true;
+    threadMutex.unlock();
+
+    return 0;
+}
+
+int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
+
+    updateIsRunning = true;
+
+    updateIsRunning = false;
+    return 0;
+}
+
+
