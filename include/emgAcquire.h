@@ -26,6 +26,8 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
+#include <algorithm>
 
 #include "socketStream.h"
 #include "jsonWrapper.hpp"
@@ -51,8 +53,11 @@ namespace emgAcquire{
         bool isNewMsgReceived;                              // a boolean variable for checking if the message is new or not
         socketStream svrHdlr;                               // socketStream object for handling the communication with the server
         jsonWrapper json_msg;                               // the data of the received message
+        
         std::thread listenerThread;                         // a thread for listening to the server in parallel
         std::mutex threadMutex;                             // a mutex object for handling share memory between threads
+        std::condition_variable cv;                         // a condition variable to wait for the buffer
+        
 
         // acquisition-related variables
         std::string svr_acq_device;                         // the name of the acquisition device from the server
@@ -62,11 +67,18 @@ namespace emgAcquire{
 
         // functionality varaibles
         float frequency;                                    // the frequency at which the client will acquire the data (default value 20Hz)
+        unsigned int nb_samples_to_return;                  // the number of samples to return
+        float cycle_time_ms;                                // the cycle time in milli-seconds
+        unsigned int remainder;                             // the remainder of the samples to be sent
+        bool hasRemainder;                                  // a flag to signal if the number of samples to return is not even
+        bool giveRemainder;                                 // a flag to signal if the remainder is been given to the client or not
         unsigned int nb_channels_required;                  // the number of channels required by the client (default value 2)
         std::string msg;                                    // a variable to hold the received
 
         unsigned int bufferSize;                            // the number of samples to hold as a buffer for each channel (default value 300)
         std::vector< std::vector<double> > buffer;          // the buffer for holding the received data
+        std::vector<int> bufferIndexes;                     // the indexes indicating where the last sample is
+        bool is_buffer_ok;                                  // a flag to signal if the buffer has the required amount of samples
         bool interpolate;                                   // a bool flag for signalling the use of interpolation or not
         bool giveDigitalSignal;                             // a bool flag for returning or not the digital signal of the device
 
@@ -76,6 +88,7 @@ namespace emgAcquire{
 
         int listening_to_server();                          // a function for listening to the server and acquire the signals asynchronously to the main thread
         int updateBuffer();                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
+        bool updateIsRunning;                               // a flag indicating if the unpdate function is running
 
     public:
         Client(){};                                                                         // empty contructor

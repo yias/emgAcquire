@@ -56,15 +56,25 @@ emgAcquire::Client::Client(unsigned int nb_ch){
 
     nb_channels_required = nb_ch;
 
+    hasRemainder = false;
+    giveRemainder = false;
+
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
     buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required,-1);
+
+    is_buffer_ok = false;
+
+    updateIsRunning = false;
 
     interpolate = false;
 
     giveDigitalSignal = false;
 
     isRunning = false;
+
 }
 
 
@@ -85,11 +95,24 @@ emgAcquire::Client::Client(float freq){
     // functionality varaibles
     frequency = freq;
 
+    cycle_time_ms = 1000 / frequency;
+    nb_samples_to_return = 0;
+    remainder = 0;
+
+    hasRemainder = false;
+    giveRemainder = false;
+
     nb_channels_required = emgAcquire::DEFAULT_NB_CHANNELS;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
     buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required,-1);
+
+    is_buffer_ok = false;
+
+    updateIsRunning = false;
 
     interpolate = false;
 
@@ -117,11 +140,24 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
     // functionality varaibles
     frequency = freq;
 
+    cycle_time_ms = 1000 / frequency;
+    nb_samples_to_return = 0;
+    remainder = 0;
+
+    hasRemainder = false;
+    giveRemainder = false;
+
     nb_channels_required = nb_ch;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
     buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required,-1);
+
+    is_buffer_ok = false;
+
+    updateIsRunning = false;
 
     interpolate = false;
 
@@ -149,11 +185,24 @@ emgAcquire::Client::Client(std::string srvIP){
     // functionality varaibles
     frequency = emgAcquire::DEFAULT_FREQUENCY;
 
+    cycle_time_ms = 1000 / frequency;
+    nb_samples_to_return = 0;
+    remainder = 0;
+
+    hasRemainder = false;
+    giveRemainder = false;
+
     nb_channels_required = emgAcquire::DEFAULT_NB_CHANNELS;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
     buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required,-1);
+
+    is_buffer_ok = false;
+
+    updateIsRunning = false;
 
     interpolate = false;
 
@@ -180,11 +229,24 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
     // functionality varaibles
     frequency = freq;
 
+    cycle_time_ms = 1000 / frequency;
+    nb_samples_to_return = 0;
+    remainder = 0;
+
+    hasRemainder = false;
+    giveRemainder = false;
+
     nb_channels_required = nb_ch;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
     buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required,-1);
+
+    is_buffer_ok = false;
+
+    updateIsRunning = false;
 
     interpolate = false;
 
@@ -209,11 +271,11 @@ int emgAcquire::Client::setNBofChannels(unsigned int nb_ch){
     
 
     if (nb_ch <= emgAcquire::MAXIMUM_NB_CHANNELS){
-        nb_channels_received = nb_ch;
+        nb_channels_required = nb_ch;
         return 0;
     }else{
         std::cout << "[emgAcquireClient] The number of channels cannot be greater than " << emgAcquire::MAXIMUM_NB_CHANNELS << std::endl;
-        std::cout << "[emgAcquireClient] The number of channels has not been changed. The current number of channels size is: " << nb_channels_received << std::endl;
+        std::cout << "[emgAcquireClient] The number of channels has not been changed. The current number of channels size is: " << nb_channels_required << std::endl;
         return -1;
     }
 
@@ -236,6 +298,7 @@ int emgAcquire::Client::setFrequency(float freq){
 
     if (freq <= emgAcquire::MAXIMUM_FREQUENCY){
         frequency = freq;
+        cycle_time_ms = 1000 / frequency; 
         return 0;
     }else{
         std::cout << "[emgAcquireClient] The acquisition frequency cannot be greater than " << emgAcquire::MAXIMUM_FREQUENCY << " Hz" << std::endl;
@@ -396,4 +459,119 @@ int emgAcquire::Client::setDigitalSignalReturn(bool digSingalReturn){
     giveDigitalSignal = digSingalReturn;
 
     return 0;
+}
+
+
+std::string emgAcquire::Client::getDeviceName(){
+    /**
+     *   returning the acquisition device name
+     */
+
+     return svr_acq_device;
+}
+
+
+std::string emgAcquire::Client::getSignalsType(){
+    /**
+     *   returning the type of the signals
+     */
+    
+    return signals_type;
+}
+
+
+float emgAcquire::Client::getSvrFrequency(){
+    /**
+     *   returning the real acquisition frequency of the device
+     */
+    
+    return svr_acq_frequency;
+}
+
+
+unsigned int emgAcquire::Client::getNBofChannelsReceived(){
+    /**
+     *   returning the number of channels received from the server
+     */
+    
+    return nb_channels_received;
+}
+
+
+std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
+    /**
+     *   returning the signals (EMG and the digital signal if giveDigitalSignal is true)
+     */
+
+
+    std::unique_lock<std::mutex> lk(threadMutex);
+    unsigned int nb_r_channells = (nb_channels_required < nb_channels_received) ? nb_channels_required : nb_channels_received;
+
+    if(giveDigitalSignal){
+        nb_r_channells ++;
+    }
+
+    unsigned int s2return = nb_samples_to_return;
+
+    if (hasRemainder && giveRemainder){
+        s2return += 2*remainder;
+    }
+
+    std::vector< std::vector<double> > returnedMatrix(nb_r_channells, std::vector<double>(s2return) );
+
+    while(!is_buffer_ok || updateIsRunning){
+        cv.wait(lk);
+    }
+
+
+    // threadMutex.lock();
+    for (int i = 0; i < ((giveDigitalSignal) ? nb_r_channells-1 : nb_r_channells); i++ ){
+
+        // copy from buffer
+        std::copy_n(buffer[i].begin(), s2return, returnedMatrix[i].begin());
+
+        // remove these elements from the buffer
+        buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
+        buffer[i].resize(bufferSize, 0);
+        bufferIndexes[i] = bufferIndexes[i] - s2return;
+        if (bufferIndexes[i] < nb_samples_to_return){
+            is_buffer_ok = is_buffer_ok && false;
+        }
+    }
+    if(giveDigitalSignal){
+        // if the digital signal is required, inlude that into the returned matrix
+
+        // copy from buffer
+        std::copy_n(buffer.back().begin(), s2return, returnedMatrix.back().begin());
+    }
+
+    // remove the same number of ellements from the rest of the channels
+    for (int i = nb_r_channells; i<(int)buffer.size(); i++){
+        buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
+        buffer[i].resize(bufferSize, 0);
+    }
+    // threadMutex.unlock();
+
+    if (hasRemainder) {
+        if (giveRemainder){
+            giveRemainder = false;
+        }else{
+            giveRemainder = true;
+        }
+    }
+
+    auto cTime = std::chrono::high_resolution_clock::now();
+
+    double timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
+    if (timeElapsed < cycle_time_ms){
+        while(timeElapsed < cycle_time_ms){
+            cTime = std::chrono::high_resolution_clock::now();
+            timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
+        }
+    }
+
+    give_msg_time = std::chrono::high_resolution_clock::now();
+
+
+    return returnedMatrix;
 }
