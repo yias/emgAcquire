@@ -560,6 +560,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         }
     }
 
+    // wait until the cycle time has passed
     auto cTime = std::chrono::high_resolution_clock::now();
 
     double timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
