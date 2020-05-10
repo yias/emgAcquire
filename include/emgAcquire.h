@@ -75,6 +75,7 @@ namespace emgAcquire{
         bool isRunning;                                     // a boolian variable for signalling is the node is running
 
         int listening_to_server();                          // a function for listening to the server and acquire the signals asynchronously to the main thread
+        int updateBuffer();                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
 
     public:
         Client(){};                                                                         // empty contructor

@@ -54,11 +54,11 @@ emgAcquire::Client::Client(unsigned int nb_ch){
     // functionality varaibles
     frequency = emgAcquire::DEFAULT_FREQUENCY;
 
-    nb_channels_received = nb_ch;
+    nb_channels_required = nb_ch;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
-    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
 
     interpolate = false;
 
@@ -85,11 +85,11 @@ emgAcquire::Client::Client(float freq){
     // functionality varaibles
     frequency = freq;
 
-    nb_channels_received = emgAcquire::DEFAULT_NB_CHANNELS;
+    nb_channels_required = emgAcquire::DEFAULT_NB_CHANNELS;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
-    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
 
     interpolate = false;
 
@@ -117,11 +117,11 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
     // functionality varaibles
     frequency = freq;
 
-    nb_channels_received = nb_ch;
+    nb_channels_required = nb_ch;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
-    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
 
     interpolate = false;
 
@@ -149,11 +149,11 @@ emgAcquire::Client::Client(std::string srvIP){
     // functionality varaibles
     frequency = emgAcquire::DEFAULT_FREQUENCY;
 
-    nb_channels_received = emgAcquire::DEFAULT_NB_CHANNELS;
+    nb_channels_required = emgAcquire::DEFAULT_NB_CHANNELS;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
-    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
 
     interpolate = false;
 
@@ -180,11 +180,11 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
     // functionality varaibles
     frequency = freq;
 
-    nb_channels_received = nb_ch;
+    nb_channels_required = nb_ch;
 
     bufferSize = emgAcquire::DEFAULT_BUFFER_SIZE;
 
-    buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
 
     interpolate = false;
 
@@ -302,21 +302,55 @@ int emgAcquire::Client::setBufferSize(unsigned int bfrSize){
      *  bfrSize:  the number of samples of each channel to keep in the buffer
      *
      *  Returns:
-     *      0: if the size of the buffer has been correctly modified
-     *     -1: if the size of the buffer is not modified
+     *      0: the size of the buffer has been correctly modified
+     *     -1: the size of the buffer was not modified because the desired size is greater than the maximum allowed buffer-size
+     *     -2: the size of the buffer was not modified due to an undefined reason
+     *     -3: the size of the buffer was not modified because the desired size is less than the current buffer and the application is running (avoiding data loss)
+     *     -4: the size of the buffer was not modified due to an undefined reason (while the application was running)
      */
 
     if (bfrSize<=emgAcquire::MAXIMUM_BUFFER_SIZE){
         
-        bufferSize = bfrSize;
+        if(!isRunning){
 
-        buffer = std::vector< std::vector<double> > (bufferSize, std::vector<double>());
+            buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bfrSize, 0));
 
-        if ((unsigned int)buffer.size()==bfrSize){
-            return 0;
+            if ((unsigned int)buffer.size()==bfrSize){
+                bufferSize = bfrSize;
+                return 0;
+            }else{
+                return -2;
+            }
         }else{
-            return -2;
+            if(bfrSize < bufferSize){
+                std::cout << "[emgAcquireClient] The new buffer-size cannot be less than the current buffer-size while the application is running" << std::endl;
+                std::cout << "[emgAcquireClient] The buffer has not been changed. The current buffer size is: " << bufferSize << std::endl;
+                return -3;
+            }else{
+                threadMutex.lock();
+                for (int i = 0; i < (int)buffer.size(); i++){
+                    buffer[i].resize(bfrSize, 0);
+                }
+                threadMutex.unlock();
+                bool test = true;
+                for (int i = 0; i < (int)buffer.size(); i++){
+                    if ((unsigned int)buffer[i].size()==bfrSize){
+                        test =  test && true;
+                    }else{
+                        test =  test && false;
+                    }
+                }
+                
+                if (test){
+                    bufferSize = bfrSize;
+                    return 0;
+                }else{
+                    return -4;
+                }
+                
+            }
         }
+        
 
     }else{
         std::cout << "[emgAcquireClient] The new size cannot be greater than the maximum buffer-size(" << emgAcquire::MAXIMUM_BUFFER_SIZE << " samples)" << std::endl;
