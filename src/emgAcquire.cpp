@@ -37,6 +37,15 @@
 #endif
 
 
+std::vector< std::vector<double> > resampe_data(std::vector< std::vector<double> > data, float desired_freq, float original_freq, unsigned int nb_of_forget_points){
+
+    std::vector< std::vector<double> > resampled_Mat;
+
+
+    return resampled_Mat;
+}
+
+
 emgAcquire::Client::Client(unsigned int nb_ch){
 
     // comunication related variables
@@ -49,7 +58,7 @@ emgAcquire::Client::Client(unsigned int nb_ch){
     }
     clName = "emgAcquireClient_on_" + pc_name;
 
-    isNewMsgReceived = false;
+    isFirstMsgReceived = false;
 
     isConnected = false;
 
@@ -69,9 +78,11 @@ emgAcquire::Client::Client(unsigned int nb_ch){
 
     is_buffer_ok = false;
 
+    initialize_ok = false;
+
     updateIsRunning = false;
 
-    interpolate = false;
+    resample = true;
 
     giveDigitalSignal = false;
 
@@ -92,7 +103,7 @@ emgAcquire::Client::Client(float freq){
     }
     clName = "emgAcquireClient_on_" + pc_name;
 
-    isNewMsgReceived = false;
+    isFirstMsgReceived = false;
 
     isConnected = false;
 
@@ -116,9 +127,11 @@ emgAcquire::Client::Client(float freq){
 
     is_buffer_ok = false;
 
+    initialize_ok = false;
+
     updateIsRunning = false;
 
-    interpolate = false;
+    resample = true;
 
     giveDigitalSignal = false;
 
@@ -139,7 +152,7 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
     }
     clName = "emgAcquireClient_on_" + pc_name;
 
-    isNewMsgReceived = false;
+    isFirstMsgReceived = false;
 
     isConnected = false;
 
@@ -163,9 +176,11 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
 
     is_buffer_ok = false;
 
+    initialize_ok = false;
+
     updateIsRunning = false;
 
-    interpolate = false;
+    resample = true;
 
     giveDigitalSignal = false;
 
@@ -186,7 +201,7 @@ emgAcquire::Client::Client(std::string srvIP){
     }
     clName = "emgAcquireClient_on_" + pc_name;
 
-    isNewMsgReceived = false;
+    isFirstMsgReceived = false;
 
     isConnected = false;
 
@@ -210,9 +225,11 @@ emgAcquire::Client::Client(std::string srvIP){
 
     is_buffer_ok = false;
 
+    initialize_ok = false;
+
     updateIsRunning = false;
 
-    interpolate = false;
+    resample = true;
 
     giveDigitalSignal = false;
 
@@ -232,7 +249,7 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
     }
     clName = "emgAcquireClient_on_" + pc_name;
 
-    isNewMsgReceived = false;
+    isFirstMsgReceived = false;
 
     isConnected = false;
 
@@ -256,9 +273,11 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
 
     is_buffer_ok = false;
 
+    initialize_ok = false;
+
     updateIsRunning = false;
 
-    interpolate = false;
+    resample = true;
 
     giveDigitalSignal = false;
 
@@ -434,7 +453,7 @@ int emgAcquire::Client::setBufferSize(unsigned int bfrSize){
 }
 
 
-int emgAcquire::Client::setInterpolation(bool interpol){
+int emgAcquire::Client::resampling(bool doResamle){
 
     /**
      *  changing the interpolation flag.
@@ -447,7 +466,7 @@ int emgAcquire::Client::setInterpolation(bool interpol){
      *      0: always
      */
     
-    interpolate = interpol;
+    resample = doResamle;
 
     return 0;
 }
@@ -456,9 +475,9 @@ int emgAcquire::Client::setInterpolation(bool interpol){
 int emgAcquire::Client::setDigitalSignalReturn(bool digSingalReturn){
 
     /**
-     *  changing the interpolation flag.
+     *  setting the digital signal to return or not.
      *  
-     *  interpol:  the desired interpolation flag.
+     *  digSignalRetrun:  the desired flag.
      *              ture:   to retrieve the digital signal
      *              false:  not to retrieve the digital signal
      *
@@ -602,6 +621,8 @@ int emgAcquire::Client::initialize(){
      *     -4: 
      */
 
+    initialize_ok = false;
+
     // initialize the socket
     if(comHdlr.initialize_socketStream(hostIP.c_str(), svrPort)<0){
         std::cerr << "[emgAcquireClient] Unable to initialize socketStream" << std::endl;
@@ -624,9 +645,14 @@ int emgAcquire::Client::initialize(){
 
     // starting listener
     listenerThread = std::thread(&emgAcquire::Client::listening_to_server, this);
-    std::cout << "[emgAcquireClient] Signal acquisition has started" << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(20));
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(30));
+
+    std::cout << "[emgAcquireClient] Device on server: " << svr_acq_device << std::endl;
+    std::cout << "[emgAcquireClient] Type of signals: " << signals_type << std::endl;
+    std::cout << "[emgAcquireClient] Device acquisition frequency: " << svr_acq_frequency << std::endl;
+    std::cout << "[emgAcquireClient] Device number of channels" << nb_channels_received << std::endl;
+
 
     // check if the number of signals received is enough
     if (nb_channels_received < nb_channels_required){
@@ -634,13 +660,46 @@ int emgAcquire::Client::initialize(){
         buffer = std::vector< std::vector<double> > (nb_channels_required + 1, std::vector<double>(bufferSize, 0));
         bufferIndexes = std::vector<int>(nb_channels_required + 1,-1);
         threadMutex.lock();
-        std::cout << "[emgAcquireClient] Warning!!!!!" << std::endl;
-        std::cout << "[emgAcquireClient] The number of required signals is greater than the received signals" << std::endl;
-        std::cout << "[emgAcquireClient] Continueing with the number of received signals" << std::endl;
+        std::cout << "[emgAcquireClient] Warning!!!!! The number of required signals is greater than the received signals" << std::endl;
+        std::cout << "[emgAcquireClient] Continuing with the number of received signals" << std::endl;
         std::cout << "[emgAcquireClient] The number of signals is " << nb_channels_required << std::endl;
         threadMutex.unlock();
     }
-    
+
+    cycle_time_ms = 1000.0 / frequency;
+
+    giveRemainder = false;
+
+    if(!resample){
+        nb_samples_to_return = cycle_time_ms * (svr_acq_frequency / 1000.0);
+        float tmp = cycle_time_ms * (svr_acq_frequency/1000.0);
+         if (nb_samples_to_return == tmp){
+            hasRemainder = false;
+            remainder = 0;
+        }else{
+            hasRemainder = true;
+            remainder = 1;
+        }
+    }else{
+        nb_samples_to_return = cycle_time_ms;
+        if (cycle_time_ms == nb_samples_to_return){
+            hasRemainder = false;
+            remainder = 0;
+        }else{
+            hasRemainder = true;
+            remainder = 1;
+        }
+    }
+
+    buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(bufferSize, 0));
+
+    small_buffer = std::vector< std::vector<double> > (nb_channels_required, std::vector<double>(emgAcquire::SMALL_BUFFER_SIZE, 0));
+
+    bufferIndexes = std::vector<int>(nb_channels_required, 0);
+
+    initialize_ok = true;
+    std::cout << "[emgAcquireClient] Ready to start acquiring" << std::endl;
+
     return 0;
 }
 
@@ -650,6 +709,11 @@ int emgAcquire::Client::listening_to_server(){
     std::string msg;
     std::vector< std::vector<double> > dataMat;
 
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    double timeEllapsed;
+    std::vector<double> timings;
+
     while(isConnected){
         if(comHdlr.socketStream_ok()){
             msg = comHdlr.get_latest(&isNew);
@@ -657,21 +721,76 @@ int emgAcquire::Client::listening_to_server(){
                 // if the message is new:
                 // parse the json string in a json document
                 json_msg.updateDoc(msg);
-                // jsonWrapper testObj(msg);
+
+                if(!isFirstMsgReceived){
+                    svr_acq_device = json_msg.getField<rapidJson_types::String>("device_name");
+                    svr_acq_frequency = json_msg.getField<rapidJson_types::Float>("device_freq");
+                    nb_channels_received = json_msg.getField<rapidJson_types::Int>("nb_channels");
+                    isFirstMsgReceived = true;
+                }
+
+                // get the contents of the field "data"
+                dataMat = json_msg.getField<rapidJson_types::Mat2DD>(std::string("data"));
 
                 if(isRunning){
-                    // get the contains of the field "data"
-                    dataMat = json_msg.getField<rapidJson_types::Mat2DD>(std::string("data"));
-                    // std::cout << "size of the matrix: " << dataMat.size() << ", " << dataMat[0].size() << std::endl;
+                    start = std::chrono::high_resolution_clock::now();
 
-                    updateBuffer(dataMat);
+                    // if acquisition has started from the client, undate the buffer                    
+                    
+                    if(resample){
+                        // if resample is true, resample the signals to 1000 Hz
+                        
+                        // concatenate the small buffer with the new data
+                        std::vector< std::vector<double> > tmp_vec (nb_channels_required, std::vector<double>());
+
+                        for (int i=0; i<nb_channels_required; i++){
+                            tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
+                    
+                            tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
+                            tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
+                        } 
+
+                        // resample the data
+                        tmp_vec = resampe_data(tmp_vec, 1000.0, svr_acq_frequency, emgAcquire::SMALL_BUFFER_SIZE);
+                        
+                        // update buffer
+                        updateBuffer(dataMat);
+
+                    }else{
+
+                        // update buffer
+                        updateBuffer(dataMat);
+                    }
+
+                    end = std::chrono::high_resolution_clock::now();
+                    timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count();
+                    timings.push_back(timeEllapsed);
+
+                    // std::cout << "size of the matrix: " << dataMat.size() << ", " << dataMat[0].size() << std::endl;
+                }
+
+                // get the latest raw samples as a small buffer
+                if(initialize_ok){
+                    for(int i=0; i< nb_channels_required; i++){
+                        std::copy_n(dataMat[i].begin(), emgAcquire::SMALL_BUFFER_SIZE, small_buffer[i].begin());
+                    }
                 }
 
             }          
         }
     }
 
+    double sumUpdate = 0;
+    
+    // find the average computational time and print it in the terminal
+    for(auto& n: timings){
+        sumUpdate +=n;
+    }
+    double aveUpdate= sumUpdate/(double)timings.size();
 
+    std::cout << "averave updating time: " << aveUpdate << " microseconds" << std::endl;
+
+    std::cout << "[emgAcquireClient] Stopped listening to server" << std::endl;
 
     return 0;
 }
@@ -680,16 +799,64 @@ int emgAcquire::Client::start(){
     threadMutex.lock();
     isRunning = true;
     threadMutex.unlock();
-
+    std::cout << "[emgAcquireClient] Acquisition started" << std::endl;
     return 0;
 }
 
 int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
+    std::lock_guard<std::mutex> lk(threadMutex);
+
     updateIsRunning = true;
 
+    bool is_buffer_full = false;
+
+    bool tmp_is_buffer_ok = true;
+    
+    std::vector< std::vector<double> > tmp_vec (nb_channels_required, std::vector<double>());
+
+    for (int i=0; i<nb_channels_required; i++){
+        int nb_new_samples = (int) mdata[i].size();
+
+        tmp_vec[i].reserve(bufferSize);
+                    
+        tmp_vec[i].insert(tmp_vec[i].end(), mdata[i].begin(), mdata[i].end());
+        tmp_vec[i].insert(tmp_vec[i].end(), buffer[i].begin(), buffer[i].end() - nb_new_samples);
+
+        if (bufferIndexes[i] + nb_new_samples > bufferSize){
+            is_buffer_full = is_buffer_full || true;
+            bufferIndexes[i] = bufferSize;
+        }else{
+            bufferIndexes[i] += nb_new_samples;
+        }
+
+        if (bufferIndexes[i] < nb_samples_to_return){
+            tmp_is_buffer_ok = tmp_is_buffer_ok && false;
+        }
+        
+    }
+
+    is_buffer_ok = tmp_is_buffer_ok;
+
+    if (is_buffer_full){
+        std::cout << "[emgAcquireClient] Buffer is full. Possible data loss." << std::endl;
+    }
+
     updateIsRunning = false;
+
+    cv.notify_all();
     return 0;
 }
 
+int emgAcquire::Client::shutdown(){
+
+    // close communication with the server
+    comHdlr.closeCommunication();
+    return 0;
+}
+
+emgAcquire::Client::~Client(){
+
+
+}
 

@@ -77,7 +77,7 @@ int main(int argc, char **argv){
                 // parse the json string in a json document
                 jsonWrapper testObj(msg);
 
-                // get the contains of the field "data"
+                // get the contents of the field "data"
                 mat_double = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
                 std::cout << "size of the matrix: " << mat_double.size() << ", " << mat_double[0].size() << std::endl;
 

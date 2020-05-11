@@ -38,6 +38,7 @@ namespace emgAcquire{
     const char DEFAULT_SVR_IP[] = "localhost";
     const unsigned int DEFAULT_SVR_PORT = 10352;
     const unsigned int DEFAULT_BUFFER_SIZE = 500;
+    const unsigned int SMALL_BUFFER_SIZE = 5;
     const unsigned int MAXIMUM_BUFFER_SIZE = 5000;
     const float DEFAULT_FREQUENCY = 20.0;
     const float MAXIMUM_FREQUENCY = 1500.0;
@@ -50,10 +51,10 @@ namespace emgAcquire{
         std::string hostIP;                                 // the IP of the machine that the server is running. It can be localhost too, if the server runs localy (default)
         unsigned int svrPort;                               // the IP port of the server machine (default is 10352)
         std::string clName;
-        bool isNewMsgReceived;                              // a boolean variable for checking if the message is new or not
+        bool isFirstMsgReceived;                            // a boolean variable for checking if the message is new or not
         socketStream comHdlr;                               // socketStream object for handling the communication with the server
         jsonWrapper json_msg;                               // the data of the received message
-        bool isConnected;
+        bool isConnected;                                   // a flag indicating if a connection with the server exists
         
         std::thread listenerThread;                         // a thread for listening to the server in parallel
         std::mutex threadMutex;                             // a mutex object for handling share memory between threads
@@ -78,14 +79,16 @@ namespace emgAcquire{
 
         unsigned int bufferSize;                            // the number of samples to hold as a buffer for each channel (default value 300)
         std::vector< std::vector<double> > buffer;          // the buffer for holding the received data
+        std::vector< std::vector<double> > small_buffer;    // a small buffer to acquire the last samples of the message
         std::vector<int> bufferIndexes;                     // the indexes indicating where the last sample is
         bool is_buffer_ok;                                  // a flag to signal if the buffer has the required amount of samples
-        bool interpolate;                                   // a bool flag for signalling the use of interpolation or not
+        bool resample;                                      // a bool flag for signalling the use of interpolation or not
         bool giveDigitalSignal;                             // a bool flag for returning or not the digital signal of the device
 
         std::chrono::high_resolution_clock::time_point give_msg_time;   // a time-point object for stabilizing the frequency of the client
 
         bool isRunning;                                     // a boolian variable for signalling is the node is running (start filling the buffer)
+        bool initialize_ok;                                 // a flag indicating that initialization is done
 
         int listening_to_server();                          // a function for listening to the server and acquire the signals asynchronously to the main thread
         int updateBuffer(std::vector< std::vector<double> > mdata);                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
@@ -105,7 +108,7 @@ namespace emgAcquire{
         int setServerIP(std::string svrIP);                                                 // setting the IP address of the server
         int setServerIP(std::string svrIP, unsigned int port);                              // setting the IP address and the port of the server
         int setBufferSize(unsigned int bfrSize);                                            // setting the buffer-size
-        int setInterpolation(bool interpol);                                                // setting if the signal interpolation is desired or not
+        int resampling(bool doResample);                                                    // setting if the signal interpolation is desired or not
         int setDigitalSignalReturn(bool digSingalReturn);                                   // setting if the client wants the digital signal to be returned or not
         
         std::string getDeviceName();                                                        // returning the acquisition device name
