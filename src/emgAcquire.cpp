@@ -37,9 +37,29 @@
 #endif
 
 
-std::vector< std::vector<double> > resampe_data(std::vector< std::vector<double> > data, float desired_freq, float original_freq, unsigned int nb_of_forget_points){
+int _gcd(int a, int b){
+    /**
+     *  a function to find the greatest common divisor of two integers 
+     * 
+     */
 
-    std::vector< std::vector<double> > resampled_Mat;
+    if (b==0){
+        return a;
+    }
+    return _gcd(b, a % b);
+}
+
+
+
+std::vector< std::vector<double> > resample_data(std::vector< std::vector<double> > data, float desired_freq, float original_freq, unsigned int window_length, unsigned int nb_of_forget_points){
+
+    std::vector< std::vector<double> > resampled_Mat (data.size(), std::vector<double>());
+
+    unsigned int gCd = _gcd((int)desired_freq, (int)original_freq);
+
+    unsigned int div = original_freq / desired_freq;
+
+    
 
 
     return resampled_Mat;
@@ -751,7 +771,7 @@ int emgAcquire::Client::listening_to_server(){
                         } 
 
                         // resample the data
-                        tmp_vec = resampe_data(tmp_vec, 1000.0, svr_acq_frequency, emgAcquire::SMALL_BUFFER_SIZE);
+                        tmp_vec = resample_data(tmp_vec, 1000.0, svr_acq_frequency, emgAcquire::RESAMPLE_WINDOW_LENGTH, emgAcquire::SMALL_BUFFER_SIZE);
                         
                         // update buffer
                         updateBuffer(dataMat);

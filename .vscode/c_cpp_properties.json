@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include/",
-                "${workspaceFolder}/socketStream/include/"
+                "${workspaceFolder}/socketStream/include/",
+                "${CPP_DEPENDENCIES}/rapidjson/include"
             ],
             "defines": [
                 "_DEBUG",

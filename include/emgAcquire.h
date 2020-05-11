@@ -42,6 +42,7 @@ namespace emgAcquire{
     const unsigned int MAXIMUM_BUFFER_SIZE = 5000;
     const float DEFAULT_FREQUENCY = 20.0;
     const float MAXIMUM_FREQUENCY = 1500.0;
+    const unsigned int RESAMPLE_WINDOW_LENGTH = 3;
     const unsigned int DEFAULT_NB_CHANNELS = 2;
     const unsigned int MAXIMUM_NB_CHANNELS = 16;
 
