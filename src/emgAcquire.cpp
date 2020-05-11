@@ -776,7 +776,10 @@ int emgAcquire::Client::listening_to_server(){
                     }
                 }
 
-            }          
+            }       
+        }else{
+            std::cout << "[emgAcquireClient] Server is shut-down" << std::endl;
+            isConnected = false;
         }
     }
 
@@ -850,13 +853,64 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
 int emgAcquire::Client::shutdown(){
 
+    std::cout << "[emgAcquireClient] Shutting-down client..." << std::endl;
+    threadMutex.lock();
+    isRunning = false;
+    isConnected = false;
+    is_buffer_ok = false;
+    isFirstMsgReceived = false;
+    threadMutex.lock();
+    listenerThread.join();
+    
+    std::cout << "[emgAcquireClient] Closing communication with the server..." << std::endl;
     // close communication with the server
     comHdlr.closeCommunication();
+
+    std::cout << "[emgAcquireClient] Clearing the buffer..." << std::endl;
+    for(int i=0; i<(int)buffer.size(); i++){
+        buffer[i].clear();
+        small_buffer[i].clear();
+    }
+    buffer.clear();
+    bufferIndexes.clear();
+    small_buffer.clear();
+    std::cout << "[emgAcquireClient] Shut-down complete" << std::endl;
+
     return 0;
 }
 
 emgAcquire::Client::~Client(){
 
+    if(isRunning || isConnected){
+        std::cout << "[emgAcquireClient] Shutting-down client..." << std::endl;
+        threadMutex.lock();
+        isRunning = false;
+        isRunning = false;
+        isConnected = false;
+        is_buffer_ok = false;
+        isFirstMsgReceived = false;
+        threadMutex.lock();
+        if(listenerThread.joinable()){
+            listenerThread.join();
+        }
+        std::cout << "[emgAcquireClient] Closing communication with the server..." << std::endl;
+        // close communication with the server
+        comHdlr.closeCommunication();
+    }    
+    
+    
+    if (buffer.size() > 0){
+        std::cout << "[emgAcquireClient] Clearing the buffer..." << std::endl;
+        for(int i=0; i<(int)buffer.size(); i++){
+            buffer[i].clear();
+            small_buffer[i].clear();
+        }
+        buffer.clear();
+        bufferIndexes.clear();
+        small_buffer.clear();
+        std::cout << "[emgAcquireClient] Shut-down complete" << std::endl;
 
+    }
+    
 }
 
