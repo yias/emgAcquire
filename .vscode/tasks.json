@@ -49,6 +49,7 @@
                 "${workspaceFolder}\\build\\emgAcquire_client.exe",
                 "${workspaceFolder}\\client_examples\\client_example.cpp",
                 "${workspaceFolder}\\src\\emgAcquire.cpp",
+                "${workspaceFolder}\\src\\acquireFilters.cpp",
                 // "${workspaceFolder}\\src\\Acquisition.cpp",
                 "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
                 "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",

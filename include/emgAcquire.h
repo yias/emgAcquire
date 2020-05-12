@@ -31,6 +31,7 @@
 
 #include "socketStream.h"
 #include "jsonWrapper.hpp"
+#include "acquireFilters.hpp"
 // #include "Acquisition.h"
 
 namespace emgAcquire{
@@ -38,10 +39,11 @@ namespace emgAcquire{
     const char DEFAULT_SVR_IP[] = "localhost";
     const unsigned int DEFAULT_SVR_PORT = 10352;
     const unsigned int DEFAULT_BUFFER_SIZE = 500;
-    const unsigned int SMALL_BUFFER_SIZE = 5;
+    const unsigned int SMALL_BUFFER_SIZE = 2;
     const unsigned int MAXIMUM_BUFFER_SIZE = 5000;
     const float DEFAULT_FREQUENCY = 20.0;
     const float MAXIMUM_FREQUENCY = 1500.0;
+    const float DEFAULT_RESAMPLE_FREQUENCY = 1000;
     const unsigned int RESAMPLE_WINDOW_LENGTH = 3;
     const unsigned int DEFAULT_NB_CHANNELS = 2;
     const unsigned int MAXIMUM_NB_CHANNELS = 16;
