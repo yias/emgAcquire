@@ -527,7 +527,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
      */
 
 
-    std::unique_lock<std::mutex> lk(threadMutex);
+    // std::unique_lock<std::mutex> lk(threadMutex);
     unsigned int nb_r_channells = (nb_channels_required < nb_channels_received) ? nb_channels_required : nb_channels_received;
 
     if(giveDigitalSignal){
@@ -542,12 +542,13 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
     std::vector< std::vector<double> > returnedMatrix(nb_r_channells, std::vector<double>(s2return) );
 
-    while(!is_buffer_ok || updateIsRunning){
-        cv.wait(lk);
+    while(!is_buffer_ok){ //  || updateIsRunning
+        std::cout << "yes\n";
+        // cv.wait(lk);
     }
 
 
-    // threadMutex.lock();
+    threadMutex.lock();
     for (int i = 0; i < ((giveDigitalSignal) ? nb_r_channells-1 : nb_r_channells); i++ ){
 
         // copy from buffer
@@ -573,7 +574,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
     }
-    // threadMutex.unlock();
+    threadMutex.unlock();
 
     if (hasRemainder) {
         if (giveRemainder){
@@ -594,6 +595,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         }
     }
 
+    std::cout << "getSignals cycle time: " << cycle_time_ms << std::endl;
     give_msg_time = std::chrono::high_resolution_clock::now();
 
 
@@ -640,7 +642,7 @@ int emgAcquire::Client::initialize(){
     // starting listener
     listenerThread = std::thread(&emgAcquire::Client::listening_to_server, this);
 
-    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(30));
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(100));
 
     std::cout << "[emgAcquireClient] Device on server: " << svr_acq_device << std::endl;
     std::cout << "[emgAcquireClient] Type of signals: " << signals_type << std::endl;
@@ -711,22 +713,33 @@ int emgAcquire::Client::listening_to_server(){
     while(isConnected){
         if(comHdlr.socketStream_ok()){
             msg = comHdlr.get_latest(&isNew);
+            // std::cout << "is new: " << isNew << std::endl;
             if(isNew){
                 // if the message is new:
                 // parse the json string in a json document
-                json_msg.updateDoc(msg);
+                // std::cout << "test1\n";
+                // json_msg.updateDoc(msg);
+                jsonWrapper testObj(msg);
+                
 
                 if(!isFirstMsgReceived){
-                    svr_acq_device = json_msg.getField<rapidJson_types::String>("device_name");
-                    svr_acq_frequency = json_msg.getField<rapidJson_types::Float>("device_freq");
-                    nb_channels_received = json_msg.getField<rapidJson_types::Int>("nb_channels");
+                    // std::cout << "test2\n";
+                    svr_acq_device = testObj.getField<rapidJson_types::String>("device_name");
+                    // std::cout << "test3\n";
+                    svr_acq_frequency = testObj.getField<rapidJson_types::Float>("device_freq");
+                    // std::cout << "test4\n";
+                    std::vector<int> nb_ch_vec = testObj.getField<rapidJson_types::VecInt>("nb_channels");
+                    // nb_channels_received = json_msg.getField<rapidJson_types::Int>("nb_channels");
+                    nb_channels_received = nb_ch_vec[0] + nb_ch_vec[1];
+                    // std::cout << "test5\n";
                     isFirstMsgReceived = true;
                 }
 
                 // get the contents of the field "data"
-                dataMat = json_msg.getField<rapidJson_types::Mat2DD>(std::string("data"));
+                dataMat = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
 
                 if(isRunning){
+                    // std::cout << "test in receiver \n";
                     start = std::chrono::high_resolution_clock::now();
 
                     // if acquisition has started from the client, undate the buffer                    
@@ -745,10 +758,11 @@ int emgAcquire::Client::listening_to_server(){
                         } 
 
                         // resample the data
+                        
                         tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, svr_acq_frequency, emgAcquire::SMALL_BUFFER_SIZE);
                         
                         // update buffer
-                        updateBuffer(dataMat);
+                        updateBuffer(tmp_vec);
 
                     }else{
 
@@ -777,15 +791,17 @@ int emgAcquire::Client::listening_to_server(){
         }
     }
 
-    double sumUpdate = 0;
-    
-    // find the average computational time and print it in the terminal
-    for(auto& n: timings){
-        sumUpdate +=n;
-    }
-    double aveUpdate= sumUpdate/(double)timings.size();
+    if (timings.size()>0){
+        double sumUpdate = 0;
+        
+        // find the average computational time and print it in the terminal
+        for(auto& n: timings){
+            sumUpdate +=n;
+        }
+        double aveUpdate= sumUpdate/(double)timings.size();
 
-    std::cout << "averave updating time: " << aveUpdate << " microseconds" << std::endl;
+        std::cout << "averave updating time: " << aveUpdate << " microseconds" << std::endl;
+    }
 
     std::cout << "[emgAcquireClient] Stopped listening to server" << std::endl;
 
@@ -800,18 +816,29 @@ int emgAcquire::Client::start(){
     return 0;
 }
 
+
+int emgAcquire::Client::stop(){
+    threadMutex.lock();
+    isRunning = false;
+    threadMutex.unlock();
+    std::cout << "[emgAcquireClient] Acquisition stopped" << std::endl;
+    return 0;
+}
+
+
 int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
-    std::lock_guard<std::mutex> lk(threadMutex);
+    // std::unique_lock<std::mutex> lk(threadMutex);
+    
 
-    updateIsRunning = true;
+    
 
     bool is_buffer_full = false;
 
     bool tmp_is_buffer_ok = true;
     
     std::vector< std::vector<double> > tmp_vec (nb_channels_required, std::vector<double>());
-
+    threadMutex.lock();
     for (int i=0; i<nb_channels_required; i++){
         int nb_new_samples = (int) mdata[i].size();
 
@@ -832,16 +859,24 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         }
         
     }
+    updateIsRunning = true;
+    
+    buffer = tmp_vec;
+
 
     is_buffer_ok = tmp_is_buffer_ok;
 
+    std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << std::endl;
+
     if (is_buffer_full){
+        // threadMutex.lock();
         std::cout << "[emgAcquireClient] Buffer is full. Possible data loss." << std::endl;
+        // threadMutex.unlock();
     }
 
     updateIsRunning = false;
-
-    cv.notify_all();
+    threadMutex.unlock();
+    // cv.notify_all();
     return 0;
 }
 
@@ -849,11 +884,12 @@ int emgAcquire::Client::shutdown(){
 
     std::cout << "[emgAcquireClient] Shutting-down client..." << std::endl;
     threadMutex.lock();
+    
     isRunning = false;
     isConnected = false;
     is_buffer_ok = false;
     isFirstMsgReceived = false;
-    threadMutex.lock();
+    threadMutex.unlock();
     listenerThread.join();
     
     std::cout << "[emgAcquireClient] Closing communication with the server..." << std::endl;

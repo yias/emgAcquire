@@ -480,7 +480,7 @@ int Acquisition::continuousUpdate(){
         if(!isSetNew){
             isSetNew = true;
         }
-        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/sampling_frequency)-2));
+        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/sampling_frequency)));
     }
 
     std::cout << "[Acquisition] Stopped acquiring signals continuously" << std::endl;

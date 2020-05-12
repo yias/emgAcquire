@@ -135,7 +135,8 @@ int main(int argc, char **argv){
             // jsonWrapper testObj(msg);
             
             if(svrHdlr.socketStream_ok()){
-                svrHdlr.sendMSg2Client("listener");
+                svrHdlr.sendMSg2All();
+                // svrHdlr.sendMSg2Client("listener");
             }
 
             end = std::chrono::high_resolution_clock::now();

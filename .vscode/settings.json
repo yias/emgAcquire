@@ -53,6 +53,14 @@
         "xlocmes": "cpp",
         "xlocmon": "cpp",
         "xloctime": "cpp",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "atomic": "cpp",
+        "complex": "cpp",
+        "functional": "cpp",
+        "future": "cpp",
+        "iterator": "cpp",
+        "list": "cpp",
+        "unordered_map": "cpp",
+        "xhash": "cpp"
     }
 }

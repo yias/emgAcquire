@@ -38,7 +38,7 @@ namespace emgAcquire{
 
     const char DEFAULT_SVR_IP[] = "localhost";
     const unsigned int DEFAULT_SVR_PORT = 10352;
-    const unsigned int DEFAULT_BUFFER_SIZE = 500;
+    const unsigned int DEFAULT_BUFFER_SIZE = 1000;
     const unsigned int SMALL_BUFFER_SIZE = 2;
     const unsigned int MAXIMUM_BUFFER_SIZE = 5000;
     const float DEFAULT_FREQUENCY = 20.0;
@@ -123,6 +123,7 @@ namespace emgAcquire{
 
         int initialize();                                                                   // initalization of the node
         int start();                                                                        // start the acquisition (start filling the buffer)
+        int stop();                                                                         // stop the acquisition (stop filling the buffer)
         int shutdown();                                                                     // shutdown the node (close all communication, shutdown all the threads and clear the buffer)
     };
 
