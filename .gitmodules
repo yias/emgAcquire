@@ -1,0 +1,3 @@
+[submodule "socketStream"] 
+  path = .//socketStream
+  url = https://github.com/yias/socketStream.git
