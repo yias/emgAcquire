@@ -616,7 +616,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
     lk.unlock();
 
-    std::cout << "got signals\n";
+    // std::cout << "got signals\n";
 
     return returnedMatrix;
 }
@@ -742,22 +742,27 @@ int emgAcquire::Client::listening_to_server(){
                 
 
                 if(!isFirstMsgReceived){
-                    // std::cout << "test2\n";
+                    
                     svr_acq_device = testObj.getField<rapidJson_types::String>("device_name");
-                    // std::cout << "test3\n";
+                    
                     svr_acq_frequency = testObj.getField<rapidJson_types::Float>("device_freq");
 
                     signals_type = testObj.getField<rapidJson_types::String>("type");
-                    // std::cout << "test4\n";
+                    
                     std::vector<int> nb_ch_vec = testObj.getField<rapidJson_types::VecInt>("nb_channels");
                     // nb_channels_received = json_msg.getField<rapidJson_types::Int>("nb_channels");
                     nb_channels_received = nb_ch_vec[0] + nb_ch_vec[1];
-                    // std::cout << "test5\n";
+                    
                     isFirstMsgReceived = true;
                 }
 
                 // get the contents of the field "data"
                 dataMat = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
+
+                float tm_interval = testObj.getField<rapidJson_types::Float>(std::string("time_interval"));
+                // unsigned int tmp_acquisition_freq = std::round(10 * ((float)dataMat[0].size()) / tm_interval);
+                float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[0].size()) / tm_interval);
+                // std::cout << "tm: " << tm_interval << ", freq: " << _acquisition_freq << ", samples: " << dataMat[0].size() << std::endl;
 
                 // std::cout << "original data size: " << dataMat.size() << " x " << dataMat[0].size() << ", " << dataMat[1].size() << ", " << dataMat[2].size() << std::endl; 
 
@@ -771,6 +776,7 @@ int emgAcquire::Client::listening_to_server(){
                         // if resample is true, resample the signals to 1000 Hz
                         
                         // concatenate the small buffer with the new data
+                        
                         std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
 
                         for (int i=0; i<nb_channels_required +1; i++){
@@ -783,7 +789,7 @@ int emgAcquire::Client::listening_to_server(){
 
                         // resample the data
                         // std::cout << "new data size before: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                        tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, svr_acq_frequency, emgAcquire::SMALL_BUFFER_SIZE);
+                        tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
                         // std::cout << "new data size after: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
                         // update buffer
                         updateBuffer(tmp_vec);
@@ -855,45 +861,82 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     
     // std::cout << "in updatebuffer\n";
 
+    updateIsRunning = true;
+
     bool is_buffer_full = false;
 
     bool tmp_is_buffer_ok = true;
     
-    std::vector< std::vector<double> > tmp_vec (nb_channels_required +1 , std::vector<double>());
+    bool tmp_bl = true;
+
+    int tmp_samples = 0; 
+
+    // std::vector< std::vector<double> > tmp_vec (nb_channels_required +1 , std::vector<double>());
     // threadMutex.lock();
-    std::unique_lock<std::mutex> lk(threadMutex);
+    std::lock_guard<std::mutex> lk(threadMutex);
     for (int i=0; i<nb_channels_required + 1; i++){
-        int nb_new_samples = (int) mdata[i].size();
+        int nb_new_samples = (int)mdata[i].size();
+        // std::cout << "new_samples: " << nb_new_samples << std::endl;
 
-        tmp_vec[i].reserve(bufferSize);
-                    
-        tmp_vec[i].insert(tmp_vec[i].end(), mdata[i].begin(), mdata[i].end());
-        tmp_vec[i].insert(tmp_vec[i].end(), buffer[i].begin(), buffer[i].end() - nb_new_samples);
-
-        std::cout << "buffer index original: " << bufferIndexes[i] << std::endl;
-        std::cout << "nb_new_samples: " << nb_new_samples << std::endl;
-        if (bufferIndexes[i] + nb_new_samples > bufferSize){
-            // std::cout << "1\n";
-            is_buffer_full = is_buffer_full || true;
-            bufferIndexes[i] = bufferSize;
-        }else{
-            // std::cout << "2\n";
-            bufferIndexes[i] += nb_new_samples;
+        if(tmp_bl){
+            tmp_samples = nb_new_samples;
+            tmp_bl = false;
+            if (bufferIndexes[i] + nb_new_samples > bufferSize){
+                is_buffer_full = true;
+            }else{
+                is_buffer_full = false;
+            }
+            std::cout << "buffer: " << bufferIndexes[i] + nb_new_samples << std::endl;
         }
 
+        if (bufferIndexes[i] + nb_new_samples > bufferSize){
+            // std::vector<double> t_vec
+
+            buffer[i].erase(buffer[i].begin(), buffer[i].begin() + nb_new_samples);
+            std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].end() - nb_new_samples);
+
+            // is_buffer_full = is_buffer_full || true;
+            bufferIndexes[i] = bufferSize;
+        }else{
+            // buffer[i].insert(buffer[i].begin() + bufferIndexes[i], mdata[i].begin(), mdata[i].end());
+            std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].begin() + bufferIndexes[i]);
+            bufferIndexes[i] += nb_new_samples;
+        }
+        
         if (bufferIndexes[i] < nb_samples_to_return){
             tmp_is_buffer_ok = tmp_is_buffer_ok && false;
         }
         
+
+        // tmp_vec[i].reserve(bufferSize);
+
+                    
+        // tmp_vec[i].insert(tmp_vec[i].end(), mdata[i].begin(), mdata[i].end());
+        // tmp_vec[i].insert(tmp_vec[i].end(), buffer[i].begin(), buffer[i].end() - nb_new_samples);
+
+        // std::cout << "buffer index original: " << bufferIndexes[i] << std::endl;
+        // std::cout << "nb_new_samples: " << nb_new_samples << std::endl;
+        // if (bufferIndexes[i] + nb_new_samples > bufferSize){
+        //     // std::cout << "1\n";
+        //     is_buffer_full = is_buffer_full || true;
+        //     bufferIndexes[i] = bufferSize;
+        // }else{
+        //     // std::cout << "2\n";
+        //     bufferIndexes[i] += nb_new_samples;
+        // }
+
+        
+        
+        
     }
-    updateIsRunning = true;
+
     
-    buffer = tmp_vec;
-
-
+    
+    // buffer = tmp_vec;
+    // std::unique_lock<std::mutex> lk2(threadMutex);
     is_buffer_ok = tmp_is_buffer_ok;
 
-    std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << std::endl;
+    // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << std::endl;
 
     if (is_buffer_full){
         // threadMutex.lock();
@@ -903,7 +946,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
     updateIsRunning = false;
     // threadMutex.unlock();
-    lk.unlock();
+    // lk2.unlock();
     cv.notify_all();
     // std::cout << "out updatebuffer\n";
     return 0;

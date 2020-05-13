@@ -10,9 +10,11 @@
 int main(){
 
     float freq = 20;
-    float nb_ch = 2;
+    float nb_ch = 16;
 
     emgAcquire::Client emgListener(freq, nb_ch);
+
+    // emgListener.resampling(false);
 
     if(emgListener.initialize()<0){
         std::cout << "unable to initialize" << std::endl;

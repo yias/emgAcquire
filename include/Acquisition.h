@@ -48,6 +48,7 @@ class Acquisition{
     bool isSetNew;
 
     std::chrono::high_resolution_clock::time_point gotNewTime;
+    float acquisition_time_interval; 
 
     int printComponents(std::string t_prefix);
     int initializeInput(LONG index, _bstr_t type);
@@ -69,6 +70,8 @@ public:
     
     std::vector< std::vector<double> > getlatestDigital();
     std::vector< std::vector<double> > getlatestDigital(bool* isNew);
+
+    float getTimeInterval();
 
     std::string getDeviceName();
     float getSamplingFrequency();

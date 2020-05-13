@@ -157,6 +157,8 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
     }
     digitalData = std::vector< std::vector<double> >(nb_digital_devices, std::vector<double>());
 
+    acquisition_time_interval = 0;
+
     // std::cout << "Number of initialized analog inputs: " << analogInputDevices.size() << std::endl;
     // std::cout << "Number of initialized digital inputs: " << digitalInputDevice.size() << std::endl;
     // std::cout << "analog inputs: " << std::endl;
@@ -298,6 +300,8 @@ int Acquisition::update(){
         auto cTime = std::chrono::high_resolution_clock::now();
 
         double timeElapsed = std::chrono::duration<double, std::milli>(cTime - gotNewTime).count();
+
+        acquisition_time_interval = timeElapsed;
         // std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
 
         bool gotit = true;
@@ -314,7 +318,7 @@ int Acquisition::update(){
 
             if (gotit){
                 double frequency = analogInputDevices[i]->GetFrequency();
-                std::cout << "freq = " << frequency << " nb_quants: " << quant_count << " time elapsed: " << timeElapsed << std::endl;
+                // std::cout << "freq = " << frequency << " nb_quants: " << quant_count << " time elapsed: " << timeElapsed << std::endl;
                 gotit = false;
             }
 
@@ -494,7 +498,7 @@ int Acquisition::continuousUpdate(){
         if(!isSetNew){
             isSetNew = true;
         }
-        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/sampling_frequency)));
+        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(int(1000/sampling_frequency)-1));
     }
 
     std::cout << "[Acquisition] Stopped acquiring signals continuously" << std::endl;
@@ -559,4 +563,10 @@ std::vector<int> Acquisition::getNumberOfChannels(){
 float Acquisition::getRealSamplingFrequency(){
 
     return real_freq_AI[0];
+}
+
+
+float Acquisition::getTimeInterval(){
+
+    return acquisition_time_interval;
 }

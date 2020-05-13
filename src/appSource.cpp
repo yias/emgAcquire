@@ -11,7 +11,7 @@ int main(int argc, char **argv){
     Acquisition emgAcq;
 
     float freq = 20.0;
-    int nb_channels = 2;
+    int nb_channels = 16;
 
     if(emgAcq.initialize(freq, nb_channels)<0){
         std::cout << "Unable to initialize devices" << std::endl;
@@ -43,6 +43,7 @@ int main(int argc, char **argv){
     fields.push_back("device_freq");    // 3
     fields.push_back("nb_channels");    // 4
     fields.push_back("data");           // 5
+    fields.push_back("time_interval");  // 6
 
     
     // initialize the message by setting the fields' names
@@ -82,6 +83,8 @@ int main(int argc, char **argv){
         std::cerr << "Unable to update the message" << std::endl;
         return -2;
     }
+
+    
 
     
     // svrHdlr.printMSGcontentsTypes();
@@ -126,7 +129,10 @@ int main(int argc, char **argv){
         emgData = emgAcq.getlatest(&isNewMsg);
         if(isNewMsg){
             // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
-            
+            if(svrHdlr.updateMSG(fields[6], emgAcq.getTimeInterval()) ){
+                std::cerr << "Unable to update the message" << std::endl;
+                return -2;
+            }
             if(svrHdlr.updateMSG(fields[5], emgData) ){
                 std::cerr << "[emgAcquire] Unable to update the message" << std::endl;
             }
