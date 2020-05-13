@@ -175,6 +175,38 @@ namespace acquireFilters{
 			return resampled_Mat;
 		}
 	}
+
+
+	template<typename T>
+	float average(std::vector<T> data){
+
+		float sumUpdate = 0;
+    	// find the average computational time and print it in the terminal
+    	for(auto& n: data){
+        	sumUpdate +=n;
+    	}
+
+    	return sumUpdate/(float)data.size();
+	}
+
+	double average(std::vector<double> data);
+
+	template<typename T>
+	float standDev(std::vector<T> data){
+
+		float average = acquireFilters::average(data);
+
+		float m_sum= 0;
+
+		for(auto& n: data){
+        	m_sum += std::sqrt(n - average);
+    	}
+
+    	return m_sum/(float)(data.size()-1);
+	}
+
+
+	double standDev(std::vector<double> data);
 }
 
 #endif
