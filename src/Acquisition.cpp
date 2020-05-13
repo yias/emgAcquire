@@ -274,6 +274,8 @@ int Acquisition::activate(){
 
     std::cout << "[Acquisition] Activation complete" << std::endl;
     std::cout << std::endl;
+
+    gotNewTime = std::chrono::high_resolution_clock::now();
     
     return 0;
 }
@@ -291,8 +293,14 @@ int Acquisition::update(){
 
     if (state & Easy2AcquireCom::TransferDataReady){
 
+
+        
+        auto cTime = std::chrono::high_resolution_clock::now();
+
+        double timeElapsed = std::chrono::duration<double, std::milli>(cTime - gotNewTime).count();
         // std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
 
+        bool gotit = true;
         // get the updated data for all the analog input devices
         for (int i=0; i < nb_analog_devices; i++){
 
@@ -303,6 +311,12 @@ int Acquisition::update(){
             analogInputDevices[i]->GetQuants(0, quant_count, &analogBuffers[i], 0);
 
             const double* quants = (const double*) analogBuffers[i].GetVARIANT().parray->pvData;
+
+            if (gotit){
+                double frequency = analogInputDevices[i]->GetFrequency();
+                std::cout << "freq = " << frequency << " nb_quants: " << quant_count << " time elapsed: " << timeElapsed << std::endl;
+                gotit = false;
+            }
 
             threadMutex.lock();
             analogData[i] = std::vector<double>(quants, quants + quant_count); 
@@ -370,7 +384,7 @@ int Acquisition::update(){
         // }
         // std::cout << std::endl;
         
-        
+        gotNewTime = std::chrono::high_resolution_clock::now();
         return 0;
     }else{
         return -1;

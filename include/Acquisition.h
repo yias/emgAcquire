@@ -19,6 +19,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 
 class Acquisition{
@@ -45,6 +46,8 @@ class Acquisition{
     std::mutex threadMutex;
     bool isContinuous;
     bool isSetNew;
+
+    std::chrono::high_resolution_clock::time_point gotNewTime;
 
     int printComponents(std::string t_prefix);
     int initializeInput(LONG index, _bstr_t type);
