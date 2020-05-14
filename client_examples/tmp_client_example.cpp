@@ -1,11 +1,12 @@
 
-
+#include "acquireFilters.hpp"
 #include "emgAcquire.h"
 
 #include <vector>
 #include <iostream>
 #include <chrono>
 #include <thread>
+
 
 int main(){
 
@@ -48,16 +49,15 @@ int main(){
 
     emgListener.shutdown();
 
-    double sumUpdate = 0;
-    // find the average computational time and print it in the terminal
-    for(auto& n: timings){
-        sumUpdate +=n;
-    }
-    double aveUpdate= sumUpdate/(double)timings.size();
-
-    // std::cout << std::endl;
-
-    std::cout << "in main averave time ellapsed: " << aveUpdate << " microseconds" << std::endl;
+    std::cout << "in main averave updating time: " << acquireFilters::average(timings) << " "; 
+       
+    #ifdef _WIN32
+        std::cout << (char)241 << " ";
+    #else
+        std::cout << "\u00b1 ";
+    #endif
+        
+    std::cout << acquireFilters::standDev(timings) << " microseconds" << std::endl;
 
     return 0;
 }

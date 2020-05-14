@@ -548,7 +548,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
             cv.wait(lk);
         }
     }
-
+    lk.unlock();
     // if(!is_buffer_ok){
     //     std::cout << "yes\n";
     //     cv.wait(lk);
@@ -556,7 +556,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
     bool tmp_buffer_ok = true;
 
-    // threadMutex.lock();
+    threadMutex.lock();
     for (int i = 0; i < ((giveDigitalSignal) ? nb_r_channells-1 : nb_r_channells); i++ ){
 
         // copy from buffer
@@ -588,7 +588,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
     }
-    // threadMutex.unlock();
+    threadMutex.unlock();
 
     is_buffer_ok = tmp_buffer_ok;
 
@@ -604,17 +604,17 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     auto cTime = std::chrono::high_resolution_clock::now();
 
     double timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
-    if (timeElapsed < cycle_time_ms){
-        while(timeElapsed < cycle_time_ms){
-            cTime = std::chrono::high_resolution_clock::now();
-            timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
-        }
-    }
+    // if (timeElapsed < cycle_time_ms-4){
+    //     while(timeElapsed < cycle_time_ms-4){
+    //         cTime = std::chrono::high_resolution_clock::now();
+    //         timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
+    //     }
+    // }
 
     // std::cout << "getSignals cycle time: " << cycle_time_ms << std::endl;
     give_msg_time = std::chrono::high_resolution_clock::now();
 
-    lk.unlock();
+    // lk.unlock();
 
     // std::cout << "got signals\n";
 
@@ -761,7 +761,7 @@ int emgAcquire::Client::listening_to_server(){
 
                 float tm_interval = testObj.getField<rapidJson_types::Float>(std::string("time_interval"));
                 // unsigned int tmp_acquisition_freq = std::round(10 * ((float)dataMat[0].size()) / tm_interval);
-                float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[0].size()) / tm_interval);
+                // float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[0].size()) / tm_interval);
                 // std::cout << "tm: " << tm_interval << ", freq: " << _acquisition_freq << ", samples: " << dataMat[0].size() << std::endl;
 
                 // std::cout << "original data size: " << dataMat.size() << " x " << dataMat[0].size() << ", " << dataMat[1].size() << ", " << dataMat[2].size() << std::endl; 
@@ -779,17 +779,27 @@ int emgAcquire::Client::listening_to_server(){
                         
                         std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
 
-                        for (int i=0; i<nb_channels_required +1; i++){
+                        for (int i=0; i< (int)dataMat.size()-1; i++){
 
-                            tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
+                            // tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
                     
-                            tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
-                            tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
-                        } 
+                            // tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
+                            // tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
 
+                            float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[i].size()) / tm_interval);
+
+                            // tmp_vec[i] = acquireFilters::resample_data(tmp_vec[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                            tmp_vec[i] = acquireFilters::resample_data(dataMat[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                            
+                            // std::cout << i << " samples " << tmp_vec[i].size() << std::endl;
+                        } 
+                        tmp_vec.back() = acquireFilters::digital_resample(dataMat.back(), (int)tmp_vec[0].size());
+                        // std::cout << "samples " << tmp_vec[0].size() << ", " << tmp_vec[8].size() << ", " << tmp_vec.back().size() << std::endl;
+                        
                         // resample the data
+                        
                         // std::cout << "new data size before: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                        tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                        // tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
                         // std::cout << "new data size after: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
                         // update buffer
                         updateBuffer(tmp_vec);
@@ -822,15 +832,28 @@ int emgAcquire::Client::listening_to_server(){
     }
 
     if (timings.size()>0){
-        double sumUpdate = 0;
+        // double sumUpdate = 0;
         
-        // find the average computational time and print it in the terminal
-        for(auto& n: timings){
-            sumUpdate +=n;
-        }
-        double aveUpdate= sumUpdate/(double)timings.size();
+        // // find the average computational time and print it in the terminal
+        // for(auto& n: timings){
+        //     sumUpdate +=n;
+        // }
+        // double aveUpdate= sumUpdate/(double)timings.size();
 
-        std::cout << "averave updating time: " << aveUpdate << " microseconds" << std::endl;
+        #ifdef _WIN32
+            SetConsoleCP(437);
+            SetConsoleOutputCP(437);
+        #endif
+        
+        std::cout << "averave updating time: " << acquireFilters::average(timings) << " "; 
+       
+        #ifdef _WIN32
+            std::cout << (char)241 << " ";
+        #else
+            std::cout << "\u00b1 ";
+        #endif
+        
+        std::cout << acquireFilters::standDev(timings) << " microseconds" << std::endl;
     }
 
     std::cout << "[emgAcquireClient] Stopped listening to server" << std::endl;
@@ -874,20 +897,21 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     // std::vector< std::vector<double> > tmp_vec (nb_channels_required +1 , std::vector<double>());
     // threadMutex.lock();
     std::lock_guard<std::mutex> lk(threadMutex);
-    for (int i=0; i<nb_channels_required + 1; i++){
+    // std::cout << "indexes before: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
+    for (int i=0; i<nb_channels_required; i++){
         int nb_new_samples = (int)mdata[i].size();
         // std::cout << "new_samples: " << nb_new_samples << std::endl;
 
-        if(tmp_bl){
-            tmp_samples = nb_new_samples;
-            tmp_bl = false;
-            if (bufferIndexes[i] + nb_new_samples > bufferSize){
-                is_buffer_full = true;
-            }else{
-                is_buffer_full = false;
-            }
-            std::cout << "buffer: " << bufferIndexes[i] + nb_new_samples << std::endl;
-        }
+        // if(tmp_bl){
+        //     tmp_samples = nb_new_samples;
+        //     tmp_bl = false;
+        //     if (bufferIndexes[i] + nb_new_samples > bufferSize){
+        //         is_buffer_full = true;
+        //     }else{
+        //         is_buffer_full = false;
+        //     }
+        //     std::cout << "buffer: " << bufferIndexes[i] + nb_new_samples << std::endl;
+        // }
 
         if (bufferIndexes[i] + nb_new_samples > bufferSize){
             // std::vector<double> t_vec
@@ -895,7 +919,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             buffer[i].erase(buffer[i].begin(), buffer[i].begin() + nb_new_samples);
             std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].end() - nb_new_samples);
 
-            // is_buffer_full = is_buffer_full || true;
+            is_buffer_full = is_buffer_full || true;
             bufferIndexes[i] = bufferSize;
         }else{
             // buffer[i].insert(buffer[i].begin() + bufferIndexes[i], mdata[i].begin(), mdata[i].end());
@@ -930,13 +954,31 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         
     }
 
-    
-    
+    // adding the digital channel
+    int nb_new_samples = (int)mdata.back().size();
+
+    if (bufferIndexes.back() + nb_new_samples > bufferSize){
+
+        buffer.back().erase(buffer.back().begin(), buffer.back().begin() + nb_new_samples);
+        std::copy(mdata.back().begin(), mdata.back().end(), buffer.back().end() - nb_new_samples);
+
+        is_buffer_full = is_buffer_full || true;
+        bufferIndexes.back() = bufferSize;
+    }else{
+        // buffer[i].insert(buffer[i].begin() + bufferIndexes[i], mdata[i].begin(), mdata[i].end());
+        std::copy(mdata.back().begin(), mdata.back().end(), buffer.back().begin() + bufferIndexes.back());
+        bufferIndexes.back() += nb_new_samples;
+    }
+        
+    if (bufferIndexes.back() < nb_samples_to_return){
+        tmp_is_buffer_ok = tmp_is_buffer_ok && false;
+    }
+
     // buffer = tmp_vec;
     // std::unique_lock<std::mutex> lk2(threadMutex);
     is_buffer_ok = tmp_is_buffer_ok;
 
-    // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << std::endl;
+    // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
 
     if (is_buffer_full){
         // threadMutex.lock();
