@@ -15,7 +15,8 @@ int main(){
 
     emgAcquire::Client emgListener(freq, nb_ch);
 
-    // emgListener.resampling(false);
+    // emgListener.setResampling(false);
+    emgListener.setKeepLog(true);
 
     if(emgListener.initialize()<0){
         std::cout << "unable to initialize" << std::endl;

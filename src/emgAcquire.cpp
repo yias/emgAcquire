@@ -82,6 +82,12 @@ emgAcquire::Client::Client(unsigned int nb_ch){
 
     isRunning = false;
 
+    keeplog = false;
+
+    logFileName = "emgAcquireClient_logs.txt";
+    
+    logFolderName = "logs";
+
 }
 
 
@@ -130,6 +136,12 @@ emgAcquire::Client::Client(float freq){
     giveDigitalSignal = false;
 
     isRunning = false;
+
+    keeplog = false;
+
+    logFileName = "emgAcquireClient_logs.txt";
+
+    logFolderName = "logs";
     
 }
 
@@ -180,6 +192,11 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
 
     isRunning = false;
 
+    keeplog = false;
+
+    logFileName = "emgAcquireClient_logs.txt";
+    logFolderName = "logs";
+
 }
 
 
@@ -229,6 +246,12 @@ emgAcquire::Client::Client(std::string srvIP){
 
     isRunning = false;
 
+    keeplog = false;
+
+    logFileName = "emgAcquireClient_logs.txt";
+
+    logFolderName = "logs";
+
 }
 
 emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, unsigned int nb_ch){
@@ -276,6 +299,12 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
     giveDigitalSignal = false;
 
     isRunning = false;
+
+    keeplog = false;
+
+    logFileName = "emgAcquireClient_logs.txt";
+
+    logFolderName = "logs";
 
 }
 
@@ -447,7 +476,7 @@ int emgAcquire::Client::setBufferSize(unsigned int bfrSize){
 }
 
 
-int emgAcquire::Client::resampling(bool doResamle){
+int emgAcquire::Client::setResampling(bool doResamle){
 
     /**
      *  changing the interpolation flag.
@@ -461,6 +490,25 @@ int emgAcquire::Client::resampling(bool doResamle){
      */
     
     resample = doResamle;
+
+    return 0;
+}
+
+
+int emgAcquire::Client::setKeepLog(bool choice){
+
+    /**
+     *  changing the keeplog flag.
+     *  
+     *  choice:     the desired flag.
+     *              ture:   keep logfile
+     *              false:  don't keep logfile
+     *
+     *  Returns:
+     *      0: always
+     */
+    
+    keeplog = choice;
 
     return 0;
 }
@@ -616,7 +664,10 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
     // lk.unlock();
 
-    // std::cout << "got signals\n";
+    if(keeplog){
+        wfile << std::chrono::duration<float, std::micro>(give_msg_time - startingTime).count()/1000.0 << " | data sent to client" << std::endl; 
+    }
+
 
     return returnedMatrix;
 }
@@ -712,6 +763,27 @@ int emgAcquire::Client::initialize(){
 
     bufferIndexes = std::vector<int>(nb_channels_required + 1, 0);
 
+    if(keeplog){
+        if (openLogFile() < 0){
+            std::cout << "[emgAcquireClient] No logs will be kept" << std::endl;
+            keeplog = false;
+        }else{
+            std::time_t rawtime;
+            char time_buffer[80];
+            struct tm *timeinfo;
+            std::time(&rawtime);
+            timeinfo = localtime(&rawtime);
+
+            std::strftime(time_buffer, sizeof(time_buffer), "%Y%m%d_%H_%M_%S", timeinfo);
+            std::string covString(time_buffer);
+            startingTime = std::chrono::high_resolution_clock::now();
+            wfile << covString << " | Program started" << std::endl; 
+            
+        }
+    }
+
+    
+
     initialize_ok = true;
     std::cout << "[emgAcquireClient] Ready to start acquiring" << std::endl;
 
@@ -776,7 +848,14 @@ int emgAcquire::Client::listening_to_server(){
                         // if resample is true, resample the signals to 1000 Hz
                         
                         // concatenate the small buffer with the new data
-                        
+                        if(keeplog){
+                            auto ct_time = std::chrono::high_resolution_clock::now();
+                            wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
+                            if (nb_channels_required>9){
+                                wfile << ", " << dataMat[8].size();
+                            }
+                            wfile << ", " << dataMat.back().size() << std::endl;
+                        }
                         std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
 
                         for (int i=0; i< (int)dataMat.size()-1; i++){
@@ -863,6 +942,10 @@ int emgAcquire::Client::listening_to_server(){
 
 int emgAcquire::Client::start(){
     threadMutex.lock();
+    if(keeplog){
+        auto ct_time = std::chrono::high_resolution_clock::now();
+        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | acquisition started" << std::endl;
+    }
     isRunning = true;
     threadMutex.unlock();
     std::cout << "[emgAcquireClient] Acquisition started" << std::endl;
@@ -872,6 +955,10 @@ int emgAcquire::Client::start(){
 
 int emgAcquire::Client::stop(){
     threadMutex.lock();
+    if(keeplog){
+        auto ct_time = std::chrono::high_resolution_clock::now();
+        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | acquisition sropped" << std::endl;
+    }
     isRunning = false;
     threadMutex.unlock();
     std::cout << "[emgAcquireClient] Acquisition stopped" << std::endl;
@@ -898,6 +985,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     // threadMutex.lock();
     std::lock_guard<std::mutex> lk(threadMutex);
     // std::cout << "indexes before: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
+    
     for (int i=0; i<nb_channels_required; i++){
         int nb_new_samples = (int)mdata[i].size();
         // std::cout << "new_samples: " << nb_new_samples << std::endl;
@@ -934,7 +1022,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
         // tmp_vec[i].reserve(bufferSize);
 
-                    
+        
         // tmp_vec[i].insert(tmp_vec[i].end(), mdata[i].begin(), mdata[i].end());
         // tmp_vec[i].insert(tmp_vec[i].end(), buffer[i].begin(), buffer[i].end() - nb_new_samples);
 
@@ -978,6 +1066,15 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     // std::unique_lock<std::mutex> lk2(threadMutex);
     is_buffer_ok = tmp_is_buffer_ok;
 
+    if(keeplog){
+        auto ct_time = std::chrono::high_resolution_clock::now();
+        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | buffer_ok " << is_buffer_ok << " | index: " << bufferIndexes[0];
+        if (nb_channels_required>9){
+            wfile << ", " << bufferIndexes[8];
+        }
+        wfile << std::endl;
+    }
+
     // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
 
     if (is_buffer_full){
@@ -1020,6 +1117,61 @@ int emgAcquire::Client::shutdown(){
     small_buffer.clear();
     std::cout << "[emgAcquireClient] Shut-down complete" << std::endl;
 
+    if(keeplog){
+        auto ct_time = std::chrono::high_resolution_clock::now();
+        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | Program ended" << std::endl;
+        closeLogfile();
+        keeplog = false;
+    }
+
+    return 0;
+}
+
+
+int emgAcquire::Client::openLogFile(){
+    
+    
+    #ifdef _WIN32
+        if(CreateDirectory(logFolderName.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError()){
+            std::cout << "[emgAcquireClient] A folder logfiles is created" << std::endl;
+        }
+    #else
+        std::string curent_path=get_current_dir_name();
+        std::string dir_path = curent_path + "/logfiles";
+        if (!dirExists(dir_path)){
+            if(mkdir(dir_path.c_str(),0777)==0){
+                std::cout << "[emgAcquireClient] A folder logfiles is created" << std::endl;
+            }else{
+                std::cout<<"[emgAcquireClient] Unable to create the folder:\n"<<dir_path<<"\n";
+            }
+
+            dir_path.clear();
+    }
+
+    #endif
+
+    
+    #ifdef _WIN32
+        std::string t_logfileName = logFolderName + "\\" + logFileName;
+    #else
+        std::string t_logfileName = logFolderName + '/' logFileName;
+    #endif
+
+    wfile.open(t_logfileName);
+    if(!wfile.is_open()){
+        std::cerr << "[emgAcquireClient] Unable to open logfile" <<std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int emgAcquire::Client::closeLogfile(){
+
+    // close logfile
+    wfile.close();
+
     return 0;
 }
 
@@ -1054,6 +1206,10 @@ emgAcquire::Client::~Client(){
         small_buffer.clear();
         std::cout << "[emgAcquireClient] Shut-down complete" << std::endl;
 
+    }
+
+    if(keeplog){
+        closeLogfile();
     }
     
 }

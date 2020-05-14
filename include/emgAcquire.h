@@ -28,6 +28,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <algorithm>
+#include <fstream>
+#include <ctime>
 
 #include "socketStream.h"
 #include "jsonWrapper.hpp"
@@ -93,6 +95,15 @@ namespace emgAcquire{
         bool isRunning;                                     // a boolian variable for signalling is the node is running (start filling the buffer)
         bool initialize_ok;                                 // a flag indicating that initialization is done
 
+        bool keeplog;                                       // a flag indivating if logfiles will be kept
+        std::string logFileName;                            // the name of the logfile
+        std::string logFolderName;                          // the name of the folder to keep the logfile
+        std::ofstream wfile;
+        std::chrono::high_resolution_clock::time_point startingTime; // the time the program started
+        int openLogFile();                                  // function to create a folder id need and open the logfile
+        int closeLogfile();                                 // function to close the logfile
+        
+
         int listening_to_server();                          // a function for listening to the server and acquire the signals asynchronously to the main thread
         int updateBuffer(std::vector< std::vector<double> > mdata);                                 // updating the buffer (check if size of the buffer is reached, if yes rearrange, and append the signals to the buffer)
         bool updateIsRunning;                               // a flag indicating if the unpdate function is running
@@ -111,7 +122,8 @@ namespace emgAcquire{
         int setServerIP(std::string svrIP);                                                 // setting the IP address of the server
         int setServerIP(std::string svrIP, unsigned int port);                              // setting the IP address and the port of the server
         int setBufferSize(unsigned int bfrSize);                                            // setting the buffer-size
-        int resampling(bool doResample);                                                    // setting if the signal interpolation is desired or not
+        int setResampling(bool doResample);                                                 // setting if the signal interpolation is desired or not
+        int setKeepLog(bool choice);                                                        // function to set the keeplog flag
         int setDigitalSignalReturn(bool digSingalReturn);                                   // setting if the client wants the digital signal to be returned or not
         
         std::string getDeviceName();                                                        // returning the acquisition device name
