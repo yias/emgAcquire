@@ -15,6 +15,8 @@ int main(){
 
     emgAcquire::Client emgListener(freq, nb_ch);
 
+    emgListener.setServerIP("128.179.140.26");
+
     // emgListener.setResampling(false);
     emgListener.setKeepLog(true);
     emgListener.setDigitalSignalReturn(false);

@@ -113,20 +113,20 @@ namespace acquireFilters{
 			std::vector<T> tmp_vec(new_length, 0);
 			resampled_Vec.reserve(new_length);
 
-			int j = 0;
+			unsigned int j = 0;
 			int counter = 0;
 			bool ch_flag = true;
 			unsigned int t_overlap = overlap;
 
 			// for each sliding time window, campute its average
-			for (j=0; j<(int)data.size(); j += window_length-t_overlap){
+			for (j=0; j<(unsigned int)data.size(); j += window_length-t_overlap){
 
 				tmp_vec[counter] = 0;
 
 				// check if the reaming samples are enough for covering a full time window
 				// if there are not, then compute the average of the remaining samples
-				if (j+window_length < (int)data.size()){
-					for (int k=0; k<window_length; k++){
+				if (j+window_length < (unsigned int)data.size()){
+					for (unsigned int k=0; k<window_length; k++){
 						tmp_vec[counter] += data[j+k];
 					}
 					tmp_vec[counter] = tmp_vec[counter]/window_length;
@@ -134,7 +134,7 @@ namespace acquireFilters{
 
 					unsigned int f_window_length = (int)data.size() - j;
 					
-					for (int k=0; k<f_window_length; k++){
+					for (unsigned int k=0; k<f_window_length; k++){
 
 						tmp_vec[counter] += data[j+k];
 					}
@@ -243,7 +243,7 @@ namespace acquireFilters{
 			float ratio = desired_freq / original_freq;
 
 			// resample each of the signals
-			for (int i = 0; i < (int)data.size(); ++i){
+			for (unsigned int i = 0; i < (int)data.size(); ++i){
 				
 				unsigned int new_length = std::round((float)data[i].size() * ratio);
 				
@@ -272,7 +272,7 @@ namespace acquireFilters{
 
 						unsigned int f_window_length = (int)data[i].size() - j;
 						
-						for (int k=0; k<f_window_length; k++){
+						for (unsigned int k=0; k<f_window_length; k++){
 
 							tmp_vec[counter] += data[i][j+k];
 						}

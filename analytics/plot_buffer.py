@@ -7,7 +7,10 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-data_dir = str(pathlib.Path().absolute()) + "\\..\\logs\\"
+if sys.platform == "linux":
+    data_dir = str(pathlib.Path().absolute()) + "/../logs/"
+else:
+    data_dir = str(pathlib.Path().absolute()) + "\\..\\logs\\"
 
 fname = "emgAcquireClient_logs.csv"
 

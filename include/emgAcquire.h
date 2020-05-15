@@ -13,7 +13,12 @@
 #ifndef EMGACQUIRE_H
 #define EMGACQUIRE_H
 
-
+#ifdef __linux__
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <limits.h>
+#endif
 
 
 #ifdef _WIN32
@@ -142,6 +147,10 @@ namespace emgAcquire{
     };
 
     int getComputerName(std::string *pc_name);                                              // get the name of the pc to introduce it to the client name
+
+    #ifdef __linux__
+        int dirExists(std::string tpath);
+    #endif
 }
 
 

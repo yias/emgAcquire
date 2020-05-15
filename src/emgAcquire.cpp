@@ -34,6 +34,36 @@
         *pc_name = utf16ToUtf8(compName);
         return 0;
     }
+#else
+
+    int emgAcquire::dirExists(std::string tpath){
+        /*	This function checks if the directory 'tpath' exists
+            if it exists the function returns 0
+        */
+
+        struct stat info;
+
+        if (stat(tpath.c_str(), &info) != 0){
+            // could not have access in the folder
+            return 0;
+        }else if (info.st_mode & S_IFDIR){
+            // the folder exists
+            return 1;
+        }
+        else{
+            // the folder doesn't exist
+            return 1;
+        }
+    }
+
+    int emgAcquire::getComputerName(std::string *pc_name) {
+        char hostname[HOST_NAME_MAX];
+        gethostname(hostname, HOST_NAME_MAX);
+
+        *pc_name = std::string(hostname);
+        return 0;
+    }
+
 #endif
 
 
@@ -605,7 +635,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     bool tmp_buffer_ok = true;
 
     threadMutex.lock();
-    for (int i = 0; i < nb_channels_required; i++ ){
+    for (unsigned int i = 0; i < nb_channels_required; i++ ){
 
         std::vector<double> tmp_vec(nb_samples_to_get);
         // copy from buffer
@@ -623,7 +653,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         // std::cout << "s2return: " << s2return;
         // std::cout << "bufferIndexes[i]" << 
         bufferIndexes[i] = bufferIndexes[i] - nb_samples_to_get;
-        if (bufferIndexes[i] < nb_samples_to_get){
+        if (bufferIndexes[i] < (int)nb_samples_to_get){
             tmp_buffer_ok = tmp_buffer_ok && false;
         }
     }
@@ -639,7 +669,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         returnedMatrix.back() =  tmp_vec;
     }
     bufferIndexes.back() = bufferIndexes.back() - nb_samples_to_get;
-    if (bufferIndexes.back() < nb_samples_to_get){
+    if (bufferIndexes.back() < (int)nb_samples_to_get){
         tmp_buffer_ok = tmp_buffer_ok && false;
     }
 
@@ -661,9 +691,9 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     }
 
     // wait until the cycle time has passed
-    auto cTime = std::chrono::high_resolution_clock::now();
+    // auto cTime = std::chrono::high_resolution_clock::now();
 
-    double timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
+    // double timeElapsed = std::chrono::duration<double, std::milli>(cTime - give_msg_time).count();
     // if (timeElapsed < cycle_time_ms-4){
     //     while(timeElapsed < cycle_time_ms-4){
     //         cTime = std::chrono::high_resolution_clock::now();
@@ -858,7 +888,7 @@ int emgAcquire::Client::listening_to_server(){
                 // get the contents of the field "data"
                 dataMat = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
 
-                float tm_interval = testObj.getField<rapidJson_types::Float>(std::string("time_interval"));
+                // float tm_interval = testObj.getField<rapidJson_types::Float>(std::string("time_interval"));
                 // unsigned int tmp_acquisition_freq = std::round(10 * ((float)dataMat[0].size()) / tm_interval);
                 // float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[0].size()) / tm_interval);
                 // std::cout << "tm: " << tm_interval << ", freq: " << _acquisition_freq << ", samples: " << dataMat[0].size() << std::endl;
@@ -935,7 +965,7 @@ int emgAcquire::Client::listening_to_server(){
 
                 // get the latest raw samples as a small buffer
                 if(initialize_ok){
-                    for(int i=0; i< nb_channels_required; i++){
+                    for(unsigned int i=0; i< nb_channels_required; i++){
                         std::copy_n(dataMat[i].begin(), emgAcquire::SMALL_BUFFER_SIZE, small_buffer[i].begin());
                     }
                 }
@@ -1014,16 +1044,16 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
     bool tmp_is_buffer_ok = true;
     
-    bool tmp_bl = true;
+    // bool tmp_bl = true;
 
-    int tmp_samples = 0; 
+    // int tmp_samples = 0; 
 
     // std::vector< std::vector<double> > tmp_vec (nb_channels_required +1 , std::vector<double>());
     // threadMutex.lock();
     std::lock_guard<std::mutex> lk(threadMutex);
     // std::cout << "indexes before: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
     
-    for (int i=0; i<nb_channels_required; i++){
+    for (unsigned int i=0; i<nb_channels_required; i++){
         int nb_new_samples = (int)mdata[i].size();
         // std::cout << "new_samples: " << nb_new_samples << std::endl;
 
@@ -1038,7 +1068,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         //     std::cout << "buffer: " << bufferIndexes[i] + nb_new_samples << std::endl;
         // }
 
-        if (bufferIndexes[i] + nb_new_samples > bufferSize){
+        if (bufferIndexes[i] + nb_new_samples > (int)bufferSize){
             // std::vector<double> t_vec
 
             buffer[i].erase(buffer[i].begin(), buffer[i].begin() + nb_new_samples);
@@ -1052,7 +1082,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             bufferIndexes[i] += nb_new_samples;
         }
 
-        if (bufferIndexes[i] < nb_samples_to_get){
+        if (bufferIndexes[i] < (int)nb_samples_to_get){
             tmp_is_buffer_ok = tmp_is_buffer_ok && false;
         }
         
@@ -1082,7 +1112,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     // adding the digital channel
     int nb_new_samples = (int)mdata.back().size();
 
-    if (bufferIndexes.back() + nb_new_samples > bufferSize){
+    if (bufferIndexes.back() + nb_new_samples > (int)bufferSize){
 
         buffer.back().erase(buffer.back().begin(), buffer.back().begin() + nb_new_samples);
         std::copy(mdata.back().begin(), mdata.back().end(), buffer.back().end() - nb_new_samples);
@@ -1095,7 +1125,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         bufferIndexes.back() += nb_new_samples;
     }
         
-    if (bufferIndexes.back() < nb_samples_to_get){
+    if (bufferIndexes.back() < (int)nb_samples_to_get){
         tmp_is_buffer_ok = tmp_is_buffer_ok && false;
     }
 
@@ -1176,14 +1206,14 @@ int emgAcquire::Client::openLogFile(){
     
     #ifdef _WIN32
         if(CreateDirectory(logFolderName.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError()){
-            std::cout << "[emgAcquireClient] A folder logfiles is created" << std::endl;
+            std::cout << "[emgAcquireClient] A folder "<< logFolderName << " is created" << std::endl;
         }
     #else
         std::string curent_path=get_current_dir_name();
-        std::string dir_path = curent_path + "/logfiles";
+        std::string dir_path = curent_path + '/' + logFolderName;
         if (!dirExists(dir_path)){
             if(mkdir(dir_path.c_str(),0777)==0){
-                std::cout << "[emgAcquireClient] A folder logfiles is created" << std::endl;
+                std::cout << "[emgAcquireClient] A folder "<< logFolderName << " is created" << std::endl;
             }else{
                 std::cout<<"[emgAcquireClient] Unable to create the folder:\n"<<dir_path<<"\n";
             }
@@ -1198,8 +1228,8 @@ int emgAcquire::Client::openLogFile(){
         std::string t_logfileName = logFolderName + "\\" + logFileName + ".txt";
         std::string c_logfileName = logFolderName + "\\" + logFileName + ".csv";
     #else
-        std::string t_logfileName = logFolderName + '/' logFileName + ".txt";
-        std::string c_logfileName = logFolderName + '/' logFileName + ".csv";
+        std::string t_logfileName = logFolderName + '/' + logFileName + ".txt";
+        std::string c_logfileName = logFolderName + '/' + logFileName + ".csv";
     #endif
 
     wfile.open(t_logfileName);
