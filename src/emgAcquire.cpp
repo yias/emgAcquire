@@ -84,7 +84,7 @@ emgAcquire::Client::Client(unsigned int nb_ch){
 
     keeplog = false;
 
-    logFileName = "emgAcquireClient_logs.txt";
+    logFileName = "emgAcquireClient_logs";
     
     logFolderName = "logs";
 
@@ -139,7 +139,7 @@ emgAcquire::Client::Client(float freq){
 
     keeplog = false;
 
-    logFileName = "emgAcquireClient_logs.txt";
+    logFileName = "emgAcquireClient_logs";
 
     logFolderName = "logs";
     
@@ -194,7 +194,7 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
 
     keeplog = false;
 
-    logFileName = "emgAcquireClient_logs.txt";
+    logFileName = "emgAcquireClient_logs";
     logFolderName = "logs";
 
 }
@@ -248,7 +248,7 @@ emgAcquire::Client::Client(std::string srvIP){
 
     keeplog = false;
 
-    logFileName = "emgAcquireClient_logs.txt";
+    logFileName = "emgAcquireClient_logs";
 
     logFolderName = "logs";
 
@@ -302,7 +302,7 @@ emgAcquire::Client::Client(std::string srvIP, unsigned int port, float freq, uns
 
     keeplog = false;
 
-    logFileName = "emgAcquireClient_logs.txt";
+    logFileName = "emgAcquireClient_logs";
 
     logFolderName = "logs";
 
@@ -576,8 +576,8 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
 
     std::unique_lock<std::mutex> lk(threadMutex);
-    unsigned int nb_r_channells = (nb_channels_required < nb_channels_received) ? nb_channels_required : nb_channels_received;
-
+    // unsigned int nb_r_channells = (nb_channels_required < nb_channels_received) ? nb_channels_required : nb_channels_received;
+    unsigned int nb_r_channells = nb_channels_required;
     if(giveDigitalSignal){
         nb_r_channells ++;
     }
@@ -605,18 +605,25 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     bool tmp_buffer_ok = true;
 
     threadMutex.lock();
-    for (int i = 0; i < ((giveDigitalSignal) ? nb_r_channells-1 : nb_r_channells); i++ ){
+    for (int i = 0; i < nb_channels_required; i++ ){
 
+        std::vector<double> tmp_vec(nb_samples_to_get);
         // copy from buffer
-        std::copy_n(buffer[i].begin(), s2return, returnedMatrix[i].begin());
-
+        std::copy_n(buffer[i].begin(), nb_samples_to_get, tmp_vec.begin());
+        
+        // resample the signals if needed
+        if(resample){
+            tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, svr_acq_frequency, 0);
+        }
+        returnedMatrix[i] =  tmp_vec;
+        // std::cout << "tmp_size" << tmp_vec.size() << std::endl;
         // remove these elements from the buffer
-        buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
+        buffer[i] = std::vector<double> (buffer[i].begin() + nb_samples_to_get, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
         // std::cout << "s2return: " << s2return;
         // std::cout << "bufferIndexes[i]" << 
-        bufferIndexes[i] = bufferIndexes[i] - s2return;
-        if (bufferIndexes[i] < nb_samples_to_return){
+        bufferIndexes[i] = bufferIndexes[i] - nb_samples_to_get;
+        if (bufferIndexes[i] < nb_samples_to_get){
             tmp_buffer_ok = tmp_buffer_ok && false;
         }
     }
@@ -624,16 +631,21 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         // if the digital signal is required, inlude that into the returned matrix
 
         // copy from buffer
-        std::copy_n(buffer.back().begin(), s2return, returnedMatrix.back().begin());
+        std::vector<double> tmp_vec(nb_samples_to_get);
+        std::copy_n(buffer.back().begin(), nb_samples_to_get, tmp_vec.begin());
+        if(resample){
+            tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, svr_acq_frequency, 0);
+        }
+        returnedMatrix.back() =  tmp_vec;
     }
-    bufferIndexes.back() = bufferIndexes.back() - s2return;
-    if (bufferIndexes.back() < nb_samples_to_return){
+    bufferIndexes.back() = bufferIndexes.back() - nb_samples_to_get;
+    if (bufferIndexes.back() < nb_samples_to_get){
         tmp_buffer_ok = tmp_buffer_ok && false;
     }
 
     // remove the same number of ellements from the rest of the channels
     for (int i = nb_r_channells; i<(int)buffer.size(); i++){
-        buffer[i] = std::vector<double> (buffer[i].begin() + s2return, buffer[i].end());
+        buffer[i] = std::vector<double> (buffer[i].begin() + nb_samples_to_get, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
     }
     threadMutex.unlock();
@@ -734,28 +746,38 @@ int emgAcquire::Client::initialize(){
 
     cycle_time_ms = 1000.0 / frequency;
 
-    giveRemainder = false;
+    nb_samples_to_return = cycle_time_ms * frequency / 1000.0;
+
+    nb_samples_to_get = cycle_time_ms * svr_acq_frequency / 1000.0;
 
     if(!resample){
-        nb_samples_to_return = cycle_time_ms * (svr_acq_frequency / 1000.0);
-        float tmp = cycle_time_ms * (svr_acq_frequency/1000.0);
-         if (nb_samples_to_return == tmp){
-            hasRemainder = false;
-            remainder = 0;
-        }else{
-            hasRemainder = true;
-            remainder = 1;
-        }
-    }else{
-        nb_samples_to_return = cycle_time_ms;
-        if (cycle_time_ms == nb_samples_to_return){
-            hasRemainder = false;
-            remainder = 0;
-        }else{
-            hasRemainder = true;
-            remainder = 1;
-        }
+        nb_samples_to_return = nb_samples_to_get;
     }
+
+    giveRemainder = false;
+
+    // if(!resample){
+    //     nb_samples_to_return = cycle_time_ms * (svr_acq_frequency / 1000.0);
+    //     float tmp = cycle_time_ms * (svr_acq_frequency/1000.0);
+    //      if (nb_samples_to_return == tmp){
+    //         hasRemainder = false;
+    //         remainder = 0;
+    //     }else{
+    //         hasRemainder = true;
+    //         remainder = 1;
+    //     }
+    // }else{
+    //     nb_samples_to_return = cycle_time_ms;
+    //     if (cycle_time_ms == nb_samples_to_return){
+    //         hasRemainder = false;
+    //         remainder = 0;
+    //     }else{
+    //         hasRemainder = true;
+    //         remainder = 1;
+    //     }
+    // }
+
+    // nb_samples_to_return = 
 
     buffer = std::vector< std::vector<double> > (nb_channels_required +1, std::vector<double>(bufferSize, 0));
 
@@ -777,7 +799,12 @@ int emgAcquire::Client::initialize(){
             std::strftime(time_buffer, sizeof(time_buffer), "%Y%m%d_%H_%M_%S", timeinfo);
             std::string covString(time_buffer);
             startingTime = std::chrono::high_resolution_clock::now();
-            wfile << covString << " | Program started" << std::endl; 
+            wfile << covString << " | Program started" << std::endl;
+            csvfile << "buffer 1,";
+            if (nb_channels_required>9){
+                csvfile << "buffer 2,";
+            }  
+            csvfile << "buffer digital" << std::endl;
             
         }
     }
@@ -844,51 +871,61 @@ int emgAcquire::Client::listening_to_server(){
 
                     // if acquisition has started from the client, undate the buffer                    
                     
-                    if(resample){
-                        // if resample is true, resample the signals to 1000 Hz
+                    // if(resample){
+                    //     // if resample is true, resample the signals to 1000 Hz
                         
-                        // concatenate the small buffer with the new data
-                        if(keeplog){
-                            auto ct_time = std::chrono::high_resolution_clock::now();
-                            wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
-                            if (nb_channels_required>9){
-                                wfile << ", " << dataMat[8].size();
-                            }
-                            wfile << ", " << dataMat.back().size() << std::endl;
-                        }
-                        std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
+                    //     // concatenate the small buffer with the new data
+                    //     if(keeplog){
+                    //         auto ct_time = std::chrono::high_resolution_clock::now();
+                    //         wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
+                    //         if (nb_channels_required>9){
+                    //             wfile << ", " << dataMat[8].size();
+                    //         }
+                    //         wfile << ", " << dataMat.back().size() << std::endl;
+                    //     }
+                    //     std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
 
-                        for (int i=0; i< (int)dataMat.size()-1; i++){
+                    //     for (int i=0; i< (int)dataMat.size()-1; i++){
 
-                            // tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
+                    //         // tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
                     
-                            // tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
-                            // tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
+                    //         // tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
+                    //         // tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
 
-                            float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[i].size()) / tm_interval);
+                    //         float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[i].size()) / tm_interval);
 
-                            // tmp_vec[i] = acquireFilters::resample_data(tmp_vec[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
-                            tmp_vec[i] = acquireFilters::resample_data(dataMat[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                    //         // tmp_vec[i] = acquireFilters::resample_data(tmp_vec[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                    //         tmp_vec[i] = acquireFilters::resample_data(dataMat[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
                             
-                            // std::cout << i << " samples " << tmp_vec[i].size() << std::endl;
-                        } 
-                        tmp_vec.back() = acquireFilters::digital_resample(dataMat.back(), (int)tmp_vec[0].size());
-                        // std::cout << "samples " << tmp_vec[0].size() << ", " << tmp_vec[8].size() << ", " << tmp_vec.back().size() << std::endl;
+                    //         // std::cout << i << " samples " << tmp_vec[i].size() << std::endl;
+                    //     } 
+                    //     tmp_vec.back() = acquireFilters::digital_resample(dataMat.back(), (int)tmp_vec[0].size());
+                    //     // std::cout << "samples " << tmp_vec[0].size() << ", " << tmp_vec[8].size() << ", " << tmp_vec.back().size() << std::endl;
                         
-                        // resample the data
+                    //     // resample the data
                         
-                        // std::cout << "new data size before: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                        // tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
-                        // std::cout << "new data size after: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                        // update buffer
-                        updateBuffer(tmp_vec);
+                    //     // std::cout << "new data size before: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
+                    //     // tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
+                    //     // std::cout << "new data size after: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
+                    //     // update buffer
+                    //     updateBuffer(tmp_vec);
 
-                    }else{
+                    // }else{
 
-                        // update buffer
-                        updateBuffer(dataMat);
+                    //     // update buffer
+                    //     updateBuffer(dataMat);
+                    // }
+
+                    if(keeplog){
+                        auto ct_time = std::chrono::high_resolution_clock::now();
+                        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
+                        if (nb_channels_required>9){
+                            wfile << ", " << dataMat[8].size();
+                        }
+                        wfile << ", " << dataMat.back().size() << std::endl;
                     }
 
+                    updateBuffer(dataMat);
                     end = std::chrono::high_resolution_clock::now();
                     timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count();
                     timings.push_back(timeEllapsed);
@@ -1014,8 +1051,8 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].begin() + bufferIndexes[i]);
             bufferIndexes[i] += nb_new_samples;
         }
-        
-        if (bufferIndexes[i] < nb_samples_to_return){
+
+        if (bufferIndexes[i] < nb_samples_to_get){
             tmp_is_buffer_ok = tmp_is_buffer_ok && false;
         }
         
@@ -1058,7 +1095,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         bufferIndexes.back() += nb_new_samples;
     }
         
-    if (bufferIndexes.back() < nb_samples_to_return){
+    if (bufferIndexes.back() < nb_samples_to_get){
         tmp_is_buffer_ok = tmp_is_buffer_ok && false;
     }
 
@@ -1073,6 +1110,12 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             wfile << ", " << bufferIndexes[8];
         }
         wfile << std::endl;
+
+        csvfile << bufferIndexes[0] << ",";
+        if (nb_channels_required>9){
+            csvfile << bufferIndexes[8] << ",";
+        }
+        csvfile << bufferIndexes.back() << std::endl;
     }
 
     // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
@@ -1152,15 +1195,24 @@ int emgAcquire::Client::openLogFile(){
 
     
     #ifdef _WIN32
-        std::string t_logfileName = logFolderName + "\\" + logFileName;
+        std::string t_logfileName = logFolderName + "\\" + logFileName + ".txt";
+        std::string c_logfileName = logFolderName + "\\" + logFileName + ".csv";
     #else
-        std::string t_logfileName = logFolderName + '/' logFileName;
+        std::string t_logfileName = logFolderName + '/' logFileName + ".txt";
+        std::string c_logfileName = logFolderName + '/' logFileName + ".csv";
     #endif
 
     wfile.open(t_logfileName);
     if(!wfile.is_open()){
         std::cerr << "[emgAcquireClient] Unable to open logfile" <<std::endl;
         return -1;
+    }
+
+    csvfile.open(c_logfileName);
+    if(!csvfile.is_open()){
+        std::cerr << "[emgAcquireClient] Unable to open csv logfile" <<std::endl;
+        wfile.close();
+        return -2;
     }
 
     return 0;
@@ -1171,6 +1223,8 @@ int emgAcquire::Client::closeLogfile(){
 
     // close logfile
     wfile.close();
+
+    csvfile.close();
 
     return 0;
 }

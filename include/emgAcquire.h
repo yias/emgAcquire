@@ -74,7 +74,8 @@ namespace emgAcquire{
 
         // functionality varaibles
         float frequency;                                    // the frequency at which the client will acquire the data (default value 20Hz)
-        unsigned int nb_samples_to_return;                  // the number of samples to return
+        unsigned int nb_samples_to_return;                  // the number of samples to return to client
+        unsigned int nb_samples_to_get;                     // the number of sampples to get from the buffer
         float cycle_time_ms;                                // the cycle time in milli-seconds
         unsigned int remainder;                             // the remainder of the samples to be sent
         bool hasRemainder;                                  // a flag to signal if the number of samples to return is not even
@@ -99,6 +100,7 @@ namespace emgAcquire{
         std::string logFileName;                            // the name of the logfile
         std::string logFolderName;                          // the name of the folder to keep the logfile
         std::ofstream wfile;
+        std::ofstream csvfile;
         std::chrono::high_resolution_clock::time_point startingTime; // the time the program started
         int openLogFile();                                  // function to create a folder id need and open the logfile
         int closeLogfile();                                 // function to close the logfile

@@ -17,6 +17,7 @@ int main(){
 
     // emgListener.setResampling(false);
     emgListener.setKeepLog(true);
+    emgListener.setDigitalSignalReturn(false);
 
     if(emgListener.initialize()<0){
         std::cout << "unable to initialize" << std::endl;
