@@ -15,6 +15,10 @@ blueC := $(shell tput setaf 4)
 boldT := $(shell tput bold)
 reset:=$(shell tput sgr0)
 
+# get the current path and export it
+EMGACQUIRE_DIR = $(shell pwd)
+
+
 # set output directory, where the executables will be built
 OUTPUT_DIR = ./build
 
@@ -42,7 +46,7 @@ all: makeOutDir clientExample
 # build a socketStream server for listening to clients and retrieve the signals of a client
 clientExample:
 	$(info $(greenC)$(boldT) --> building emgAcquire client example $(yellowC)==>$(reset))
-	@$(CXX) $(CXXFLAGS) $(EXAMPLES_DIR)/tmp_client_example.cpp \
+	@$(CXX) $(CXXFLAGS) $(EXAMPLES_DIR)/client_example.cpp \
 	$(SRC_DIR)/emgAcquire.cpp $(SRC_DIR)/acquireFilters.cpp $(SOCKETSTREAM_SRC_DIR)/socketStream.cpp $(SOCKETSTREAM_SRC_DIR)/jsonWrapper.cpp $(SOCKETSTREAM_SRC_DIR)/md5.cpp \
 	-o ${OUTPUT_DIR}/emgAcquireClient.exe \
 	$(INCLUDE_PARAMS) \
@@ -55,7 +59,7 @@ clientExample:
 # echo the path of the cpp dependencies
 echoEvnVariable:
 	@echo ${CPP_DEPENDENCIES}
-	@echo $(INCLUDE_PARAMS)
+	@echo $(PATH)
 
 
 # create a directory for the builts, if it doesn't exist
