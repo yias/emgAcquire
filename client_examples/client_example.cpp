@@ -21,14 +21,18 @@
 
 int main(){
 
+    // define the acquisition frequency of the packet signals
     float freq = 20;
+
+    // define the number of signals to acquire
     float nb_ch = 16;
 
     emgAcquire::Client emgListener(freq, nb_ch);
 
-    emgListener.setServerIP("128.179.140.26");
+    // emgListener.setServerIP("localhost");
 
     // emgListener.setResampling(false);
+    
     emgListener.setKeepLog(true);
     emgListener.setDigitalSignalReturn(false);
 
