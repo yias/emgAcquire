@@ -9,100 +9,70 @@
  *  
 */
 
-// #include "socketStream.h"
-// #include "jsonWrapper.hpp"
+
+#include "acquireFilters.hpp"
 #include "emgAcquire.h"
+
+#include <vector>
+#include <iostream>
 #include <chrono>
-#include <ctime>
+#include <thread>
 
-int main(int argc, char **argv){
 
-    // define the variable that holds the server IP. In this case, the server would be a local server.
-    const char *srvIP = "128.179.140.26";
+int main(){
 
-    // if no new server IP is defined from the user, continue with the pre-defined server IP (localhost)
-    if(argc!=2){
-        std::cout << "No server IP suplied. Continue with localhost" << std::endl;
-    }else{
-        srvIP=argv[1];
+    float freq = 20;
+    float nb_ch = 16;
+
+    emgAcquire::Client emgListener(freq, nb_ch);
+
+    emgListener.setServerIP("128.179.140.26");
+
+    // emgListener.setResampling(false);
+    emgListener.setKeepLog(true);
+    emgListener.setDigitalSignalReturn(false);
+
+    if(emgListener.initialize()<0){
+        std::cout << "unable to initialize" << std::endl;
+        return -1;
     }
 
-    // create an sockectStream object with the selected server IP address 
-    socketStream socketHdlr(srvIP);
+    std::vector< std::vector<double>> mydata;
 
-    // set the size of the buffer
-    // socketHdlr.setBufferSize(64);
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    double timeEllapsed;// = std::chrono::duration<double, std::micro>(end-start).count();
 
-    
+    std::vector<double> timings;
 
-    // initialize the socket
-    if(socketHdlr.initialize_socketStream()<0){
-        std::cerr << "Unable to initialize socket" << std::endl;
-        return -4;
-    }
+    emgListener.start();
 
-    socketHdlr.set_clientName("listener");
-
-    // attemp a connection with the server
-    if(socketHdlr.make_connection()<0){
-        std::cerr << "Unable to connect to " << srvIP << std::endl;
-        return -5;
-    }
-
-    // auto start = std::chrono::steady_clock::now();
-    // auto end = std::chrono::steady_clock::now();
-
-    // double time2run = 120000;
-
-    std::chrono::milliseconds timespan(10);
-
-    // a 2D matrix of doubles to store the received data
-    std::vector< std::vector<double> > mat_double;
-
-    //  define a boolean variable for checking if the message is new or not
-    bool isNew = false;
-
-    std::string msg;
-    
     while(true){
-        // send the message to the server
-        if(socketHdlr.socketStream_ok()){
-            msg = socketHdlr.get_latest(&isNew);
-            // std::cout << "test\n";
-            if(isNew){
-                // std::cout << "main\n";
-                // std::cout << msg << std::endl;
-                
-                // if the message is new:
-                // parse the json string in a json document
-                jsonWrapper testObj(msg);
+        start = std::chrono::high_resolution_clock::now();
+        mydata = emgListener.getSignals();
 
-                // get the contents of the field "data"
-                mat_double = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
-                std::cout << "size of the matrix: " << mat_double.size() << ", " << mat_double[0].size() << std::endl;
-
-                
-            }            
-        }
-
+        // std::cout << "data shape: " << mydata.size() << ", " << mydata[0].size() << std::endl;
 
         if(kbhit()){
-            #ifdef _WIN32
-                if(getch()=='q')
-                    break;
-            #endif
-            #ifdef __linux__
-                if(getch()=='q')
-                    break;
-            #endif
+            if(getch()=='q')
+                break;
         }
-        // end = std::chrono::steady_clock::now();
-        // std::this_thread::sleep_for(timespan);
+        end = std::chrono::high_resolution_clock::now();
+        timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count();
+        timings.push_back(timeEllapsed);
     }
-    
 
-    // close communication with the server
-    socketHdlr.closeCommunication();
+    emgListener.shutdown();
+
+    std::cout << "in main averave updating time: " << acquireFilters::average(timings) << " "; 
+       
+    #ifdef _WIN32
+        std::cout << (char)241 << " ";
+    #else
+        std::cout << "\u00b1 ";
+    #endif
+        
+    std::cout << acquireFilters::standDev(timings) << " microseconds" << std::endl;
 
     return 0;
 }
