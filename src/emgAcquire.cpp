@@ -800,9 +800,9 @@ int emgAcquire::Client::initialize(){
             std::string covString(time_buffer);
             startingTime = std::chrono::high_resolution_clock::now();
             wfile << covString << " | Program started" << std::endl;
-            csvfile << "buffer 1,";
+            csvfile << "time;buffer 1;";
             if (nb_channels_required>9){
-                csvfile << "buffer 2,";
+                csvfile << "buffer 2;";
             }  
             csvfile << "buffer digital" << std::endl;
             
@@ -1111,11 +1111,11 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         }
         wfile << std::endl;
 
-        csvfile << bufferIndexes[0] << ",";
+        csvfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << ";" << bufferIndexes[0] << ";";
         if (nb_channels_required>9){
-            csvfile << bufferIndexes[8] << ",";
+            csvfile << bufferIndexes[8] << ";";
         }
-        csvfile << bufferIndexes.back() << std::endl;
+        csvfile << bufferIndexes.back() << "\n";
     }
 
     // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
