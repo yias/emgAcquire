@@ -19,7 +19,7 @@ int main(int argc, char **argv){
     }
 
     // define the variable that holds the server IP. In this case, the server would be a local server.
-    const char *srvIP = "localhost";
+    const char *srvIP = "128.179.140.26";
 
     int svrPort = 10352;
 
