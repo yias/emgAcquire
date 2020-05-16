@@ -48,13 +48,37 @@
                 "/Fe:",
                 "${workspaceFolder}\\build\\emgAcquire_client.exe",
                 "${workspaceFolder}\\client_examples\\client_example.cpp",
-                // "${workspaceFolder}\\client_examples\\tmp_client_example.cpp",
                 "${workspaceFolder}\\src\\emgAcquire.cpp",
                 "${workspaceFolder}\\src\\acquireFilters.cpp",
-                // "${workspaceFolder}\\src\\Acquisition.cpp",
                 "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
                 "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
                 "${workspaceFolder}\\socketStream\\src\\md5.cpp"
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "g++ client (Windows)",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${workspaceFolder}\\client_examples\\client_example.cpp",
+                "${workspaceFolder}\\src\\emgAcquire.cpp",
+                "${workspaceFolder}\\src\\acquireFilters.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp",
+                "-o",
+                "${workspaceFolder}\\build\\emgAcquire_client.exe",
+                "-O3",
+                "-lws2_32",
+                "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include"
             ],
             "group": "build",
             "presentation":{

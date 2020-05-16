@@ -13,25 +13,24 @@
 #include "emgAcquire.h"
 
 #ifdef _WIN32
-        std::wstring utf8ToUtf16(const std::string& utf8Str){
-        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
-        return conv.from_bytes(utf8Str);
-    }
-
-    std::string utf16ToUtf8(const std::wstring& utf16Str){
-        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
-        return conv.to_bytes(utf16Str);
-    }
 
     int emgAcquire::getComputerName(std::string *pc_name) {
-        wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+        /**
+         * 
+         * a function to get the computer name (windows version)
+         * 
+         */
+
+
+        char buffer[MAX_COMPUTERNAME_LENGTH + 1] = {0};
         DWORD cchBufferSize = sizeof(buffer) / sizeof(buffer[0]);
-        if (!GetComputerNameW(buffer, &cchBufferSize)){
+        if (!GetComputerNameA(buffer, &cchBufferSize)){
             return -1;
         }
+
+        *pc_name = std::string(buffer);
             
-        const std::wstring compName = std::wstring(&buffer[0]);
-        *pc_name = utf16ToUtf8(compName);
+        
         return 0;
     }
 #else
@@ -57,6 +56,12 @@
     }
 
     int emgAcquire::getComputerName(std::string *pc_name) {
+        /**
+         * 
+         * a function to get the computer name (linux version)
+         * 
+         */
+
         char hostname[HOST_NAME_MAX];
         gethostname(hostname, HOST_NAME_MAX);
 
@@ -225,6 +230,7 @@ emgAcquire::Client::Client(float freq, unsigned int nb_ch){
     keeplog = false;
 
     logFileName = "emgAcquireClient_logs";
+
     logFolderName = "logs";
 
 }
@@ -606,7 +612,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
 
 
     std::unique_lock<std::mutex> lk(threadMutex);
-    // unsigned int nb_r_channells = (nb_channels_required < nb_channels_received) ? nb_channels_required : nb_channels_received;
+    
     unsigned int nb_r_channells = nb_channels_required;
     if(giveDigitalSignal){
         nb_r_channells ++;
@@ -621,16 +627,12 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     std::vector< std::vector<double> > returnedMatrix(nb_r_channells, std::vector<double>(s2return) );
 
     if(!is_buffer_ok){
-        while(!is_buffer_ok){ //  || updateIsRunning
-            // std::cout << "yes\n";
+        while(!is_buffer_ok){ 
             cv.wait(lk);
         }
     }
     lk.unlock();
-    // if(!is_buffer_ok){
-    //     std::cout << "yes\n";
-    //     cv.wait(lk);
-    // }
+    
 
     bool tmp_buffer_ok = true;
 
@@ -638,6 +640,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     for (unsigned int i = 0; i < nb_channels_required; i++ ){
 
         std::vector<double> tmp_vec(nb_samples_to_get);
+
         // copy from buffer
         std::copy_n(buffer[i].begin(), nb_samples_to_get, tmp_vec.begin());
         
@@ -650,8 +653,8 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         // remove these elements from the buffer
         buffer[i] = std::vector<double> (buffer[i].begin() + nb_samples_to_get, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
-        // std::cout << "s2return: " << s2return;
-        // std::cout << "bufferIndexes[i]" << 
+        
+        // update the indexes and check if the new ones are less than the number of samples to get next time
         bufferIndexes[i] = bufferIndexes[i] - nb_samples_to_get;
         if (bufferIndexes[i] < (int)nb_samples_to_get){
             tmp_buffer_ok = tmp_buffer_ok && false;
@@ -663,11 +666,14 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         // copy from buffer
         std::vector<double> tmp_vec(nb_samples_to_get);
         std::copy_n(buffer.back().begin(), nb_samples_to_get, tmp_vec.begin());
+
         if(resample){
             tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, svr_acq_frequency, 0);
         }
         returnedMatrix.back() =  tmp_vec;
     }
+
+    // update the last index, corresponds to the digital channel, and check if its value is ok
     bufferIndexes.back() = bufferIndexes.back() - nb_samples_to_get;
     if (bufferIndexes.back() < (int)nb_samples_to_get){
         tmp_buffer_ok = tmp_buffer_ok && false;
@@ -680,6 +686,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     }
     threadMutex.unlock();
 
+    // update the flag
     is_buffer_ok = tmp_buffer_ok;
 
     if (hasRemainder) {
@@ -701,11 +708,10 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
     //     }
     // }
 
-    // std::cout << "getSignals cycle time: " << cycle_time_ms << std::endl;
+    // get the time the client retrieved the signals
     give_msg_time = std::chrono::high_resolution_clock::now();
 
-    // lk.unlock();
-
+    // if logfiles are kept, throw this info to the file
     if(keeplog){
         wfile << std::chrono::duration<float, std::micro>(give_msg_time - startingTime).count()/1000.0 << " | data sent to client" << std::endl; 
     }
@@ -725,8 +731,8 @@ int emgAcquire::Client::initialize(){
      *      0: successfully initialized the socket stream and connected to the server
      *     -1: unable to initialize socketStream
      *     -2: unable to connect to the server
-     *     -3: 
-     *     -4: 
+     *      
+     *      
      */
 
     initialize_ok = false;
@@ -786,29 +792,6 @@ int emgAcquire::Client::initialize(){
 
     giveRemainder = false;
 
-    // if(!resample){
-    //     nb_samples_to_return = cycle_time_ms * (svr_acq_frequency / 1000.0);
-    //     float tmp = cycle_time_ms * (svr_acq_frequency/1000.0);
-    //      if (nb_samples_to_return == tmp){
-    //         hasRemainder = false;
-    //         remainder = 0;
-    //     }else{
-    //         hasRemainder = true;
-    //         remainder = 1;
-    //     }
-    // }else{
-    //     nb_samples_to_return = cycle_time_ms;
-    //     if (cycle_time_ms == nb_samples_to_return){
-    //         hasRemainder = false;
-    //         remainder = 0;
-    //     }else{
-    //         hasRemainder = true;
-    //         remainder = 1;
-    //     }
-    // }
-
-    // nb_samples_to_return = 
-
     buffer = std::vector< std::vector<double> > (nb_channels_required +1, std::vector<double>(bufferSize, 0));
 
     small_buffer = std::vector< std::vector<double> > (nb_channels_required +1, std::vector<double>(emgAcquire::SMALL_BUFFER_SIZE, 0));
@@ -849,6 +832,15 @@ int emgAcquire::Client::initialize(){
 
 int emgAcquire::Client::listening_to_server(){
 
+    /**
+     *  receiving the signals from the server in a continuous manner and updates the buffer 
+     *  
+     *  
+     *  Returns:
+     *      0: if terminated properly
+     *     -1: otherwise
+     */
+
     bool isNew = false;
     std::string msg;
     std::vector< std::vector<double> > dataMat;
@@ -858,15 +850,19 @@ int emgAcquire::Client::listening_to_server(){
     double timeEllapsed;
     std::vector<double> timings;
 
+    // run continuously until the connection is lost
     while(isConnected){
+
         if(comHdlr.socketStream_ok()){
+            
+            // if the socketStream client is ok, retreive the message
+            
             msg = comHdlr.get_latest(&isNew);
-            // std::cout << "is new: " << isNew << std::endl;
+            
             if(isNew){
                 // if the message is new:
                 // parse the json string in a json document
-                // std::cout << "test1\n";
-                // json_msg.updateDoc(msg);
+                
                 jsonWrapper testObj(msg);
                 
 
@@ -879,7 +875,7 @@ int emgAcquire::Client::listening_to_server(){
                     signals_type = testObj.getField<rapidJson_types::String>("type");
                     
                     std::vector<int> nb_ch_vec = testObj.getField<rapidJson_types::VecInt>("nb_channels");
-                    // nb_channels_received = json_msg.getField<rapidJson_types::Int>("nb_channels");
+                    
                     nb_channels_received = nb_ch_vec[0] + nb_ch_vec[1];
                     
                     isFirstMsgReceived = true;
@@ -888,74 +884,25 @@ int emgAcquire::Client::listening_to_server(){
                 // get the contents of the field "data"
                 dataMat = testObj.getField<rapidJson_types::Mat2DD>(std::string("data"));
 
-                // float tm_interval = testObj.getField<rapidJson_types::Float>(std::string("time_interval"));
-                // unsigned int tmp_acquisition_freq = std::round(10 * ((float)dataMat[0].size()) / tm_interval);
-                // float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[0].size()) / tm_interval);
-                // std::cout << "tm: " << tm_interval << ", freq: " << _acquisition_freq << ", samples: " << dataMat[0].size() << std::endl;
-
-                // std::cout << "original data size: " << dataMat.size() << " x " << dataMat[0].size() << ", " << dataMat[1].size() << ", " << dataMat[2].size() << std::endl; 
-
                 if(isRunning){
-                    // std::cout << "test in receiver \n";
+                    // if the acquisition of the signals from the client has started, update the buffer
+
                     start = std::chrono::high_resolution_clock::now();
 
-                    // if acquisition has started from the client, undate the buffer                    
-                    
-                    // if(resample){
-                    //     // if resample is true, resample the signals to 1000 Hz
-                        
-                    //     // concatenate the small buffer with the new data
-                    //     if(keeplog){
-                    //         auto ct_time = std::chrono::high_resolution_clock::now();
-                    //         wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
-                    //         if (nb_channels_required>9){
-                    //             wfile << ", " << dataMat[8].size();
-                    //         }
-                    //         wfile << ", " << dataMat.back().size() << std::endl;
-                    //     }
-                    //     std::vector< std::vector<double> > tmp_vec (nb_channels_required + 1, std::vector<double>());
-
-                    //     for (int i=0; i< (int)dataMat.size()-1; i++){
-
-                    //         // tmp_vec[i].reserve(dataMat[i].size() + small_buffer[i].size());
-                    
-                    //         // tmp_vec[i].insert(tmp_vec[i].end(), small_buffer[i].begin(), small_buffer[i].end());
-                    //         // tmp_vec[i].insert(tmp_vec[i].end(), dataMat[i].begin(), dataMat[i].end());
-
-                    //         float _acquisition_freq = 100* std::ceil(10 * ((float)dataMat[i].size()) / tm_interval);
-
-                    //         // tmp_vec[i] = acquireFilters::resample_data(tmp_vec[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
-                    //         tmp_vec[i] = acquireFilters::resample_data(dataMat[i], emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
-                            
-                    //         // std::cout << i << " samples " << tmp_vec[i].size() << std::endl;
-                    //     } 
-                    //     tmp_vec.back() = acquireFilters::digital_resample(dataMat.back(), (int)tmp_vec[0].size());
-                    //     // std::cout << "samples " << tmp_vec[0].size() << ", " << tmp_vec[8].size() << ", " << tmp_vec.back().size() << std::endl;
-                        
-                    //     // resample the data
-                        
-                    //     // std::cout << "new data size before: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                    //     // tmp_vec = acquireFilters::resample_data(tmp_vec, emgAcquire::DEFAULT_RESAMPLE_FREQUENCY, _acquisition_freq, emgAcquire::SMALL_BUFFER_SIZE);
-                    //     // std::cout << "new data size after: " << tmp_vec.size() << " x " << tmp_vec[0].size() << ", " << tmp_vec[1].size() << ", " << tmp_vec[2].size() << std::endl; 
-                    //     // update buffer
-                    //     updateBuffer(tmp_vec);
-
-                    // }else{
-
-                    //     // update buffer
-                    //     updateBuffer(dataMat);
-                    // }
-
+                    // if logs are kept, throw the time stamp and the number of signals received in the logfile
                     if(keeplog){
-                        auto ct_time = std::chrono::high_resolution_clock::now();
-                        wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
+
+                        wfile << std::chrono::duration<float, std::micro>(start - startingTime).count()/1000.0 << " | samples received: " << dataMat[0].size();
                         if (nb_channels_required>9){
                             wfile << ", " << dataMat[8].size();
                         }
                         wfile << ", " << dataMat.back().size() << std::endl;
                     }
 
+                    // update the buffer
                     updateBuffer(dataMat);
+
+                    // keep diagnostics on the loop time
                     end = std::chrono::high_resolution_clock::now();
                     timeEllapsed = std::chrono::duration<double, std::micro>(end-start).count();
                     timings.push_back(timeEllapsed);
@@ -978,13 +925,6 @@ int emgAcquire::Client::listening_to_server(){
     }
 
     if (timings.size()>0){
-        // double sumUpdate = 0;
-        
-        // // find the average computational time and print it in the terminal
-        // for(auto& n: timings){
-        //     sumUpdate +=n;
-        // }
-        // double aveUpdate= sumUpdate/(double)timings.size();
 
         #ifdef _WIN32
             SetConsoleCP(437);
@@ -1008,6 +948,13 @@ int emgAcquire::Client::listening_to_server(){
 }
 
 int emgAcquire::Client::start(){
+    /**
+     *  setting the running flag to true, so that the acquisition of the signals can start
+     *  
+     *  Returns:
+     *      0: always
+     *     
+     */
     threadMutex.lock();
     if(keeplog){
         auto ct_time = std::chrono::high_resolution_clock::now();
@@ -1021,6 +968,14 @@ int emgAcquire::Client::start(){
 
 
 int emgAcquire::Client::stop(){
+    /**
+     *  setting the running flag to false, stopping the updte of the buffer
+     *  
+     *  Returns:
+     *      0: always
+     *     
+     */
+
     threadMutex.lock();
     if(keeplog){
         auto ct_time = std::chrono::high_resolution_clock::now();
@@ -1034,9 +989,16 @@ int emgAcquire::Client::stop(){
 
 
 int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
-
+    /**
+     *  This function updates the buffer to the end and the corresponding indexes
+     *  If the buffer is full, removes the oldest samples.
+     *  
+     *  Returns:
+     *      0: always
+     *     
+     */
     
-    // std::cout << "in updatebuffer\n";
+    
 
     updateIsRunning = true;
 
@@ -1044,32 +1006,17 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
 
     bool tmp_is_buffer_ok = true;
     
-    // bool tmp_bl = true;
-
-    // int tmp_samples = 0; 
-
-    // std::vector< std::vector<double> > tmp_vec (nb_channels_required +1 , std::vector<double>());
-    // threadMutex.lock();
-    std::lock_guard<std::mutex> lk(threadMutex);
-    // std::cout << "indexes before: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
     
+    std::lock_guard<std::mutex> lk(threadMutex);
+    
+    // put the channels in the buffer, one by one, only for the channels required from the user
     for (unsigned int i=0; i<nb_channels_required; i++){
+
+        // get the received number of samples for this channel
         int nb_new_samples = (int)mdata[i].size();
-        // std::cout << "new_samples: " << nb_new_samples << std::endl;
-
-        // if(tmp_bl){
-        //     tmp_samples = nb_new_samples;
-        //     tmp_bl = false;
-        //     if (bufferIndexes[i] + nb_new_samples > bufferSize){
-        //         is_buffer_full = true;
-        //     }else{
-        //         is_buffer_full = false;
-        //     }
-        //     std::cout << "buffer: " << bufferIndexes[i] + nb_new_samples << std::endl;
-        // }
-
+        
+        // check if the indexes are greater than the number the client requires and update coresponding indexes and flad
         if (bufferIndexes[i] + nb_new_samples > (int)bufferSize){
-            // std::vector<double> t_vec
 
             buffer[i].erase(buffer[i].begin(), buffer[i].begin() + nb_new_samples);
             std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].end() - nb_new_samples);
@@ -1077,34 +1024,14 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             is_buffer_full = is_buffer_full || true;
             bufferIndexes[i] = bufferSize;
         }else{
-            // buffer[i].insert(buffer[i].begin() + bufferIndexes[i], mdata[i].begin(), mdata[i].end());
+            
             std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].begin() + bufferIndexes[i]);
             bufferIndexes[i] += nb_new_samples;
         }
 
         if (bufferIndexes[i] < (int)nb_samples_to_get){
             tmp_is_buffer_ok = tmp_is_buffer_ok && false;
-        }
-        
-
-        // tmp_vec[i].reserve(bufferSize);
-
-        
-        // tmp_vec[i].insert(tmp_vec[i].end(), mdata[i].begin(), mdata[i].end());
-        // tmp_vec[i].insert(tmp_vec[i].end(), buffer[i].begin(), buffer[i].end() - nb_new_samples);
-
-        // std::cout << "buffer index original: " << bufferIndexes[i] << std::endl;
-        // std::cout << "nb_new_samples: " << nb_new_samples << std::endl;
-        // if (bufferIndexes[i] + nb_new_samples > bufferSize){
-        //     // std::cout << "1\n";
-        //     is_buffer_full = is_buffer_full || true;
-        //     bufferIndexes[i] = bufferSize;
-        // }else{
-        //     // std::cout << "2\n";
-        //     bufferIndexes[i] += nb_new_samples;
-        // }
-
-        
+        }   
         
         
     }
@@ -1120,7 +1047,6 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         is_buffer_full = is_buffer_full || true;
         bufferIndexes.back() = bufferSize;
     }else{
-        // buffer[i].insert(buffer[i].begin() + bufferIndexes[i], mdata[i].begin(), mdata[i].end());
         std::copy(mdata.back().begin(), mdata.back().end(), buffer.back().begin() + bufferIndexes.back());
         bufferIndexes.back() += nb_new_samples;
     }
@@ -1129,10 +1055,10 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         tmp_is_buffer_ok = tmp_is_buffer_ok && false;
     }
 
-    // buffer = tmp_vec;
-    // std::unique_lock<std::mutex> lk2(threadMutex);
+    // update the buffer flag
     is_buffer_ok = tmp_is_buffer_ok;
 
+    // if logs are kept, throw the timestamp and the buffer indexes
     if(keeplog){
         auto ct_time = std::chrono::high_resolution_clock::now();
         wfile << std::chrono::duration<float, std::micro>(ct_time - startingTime).count()/1000.0 << " | buffer_ok " << is_buffer_ok << " | index: " << bufferIndexes[0];
@@ -1148,23 +1074,30 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         csvfile << bufferIndexes.back() << "\n";
     }
 
-    // std::cout << "update info: buffer: " << is_buffer_ok << ", index: " << bufferIndexes[0] << ", " << bufferIndexes.back() << std::endl;
-
+    // if the buffer is full, throw a warning in the console
     if (is_buffer_full){
-        // threadMutex.lock();
-        std::cout << "[emgAcquireClient] Buffer is full. Possible data loss." << std::endl;
-        // threadMutex.unlock();
+        std::cout << "[emgAcquireClient] WARNING!! Buffer is full! Possible data loss." << std::endl;
     }
 
     updateIsRunning = false;
-    // threadMutex.unlock();
-    // lk2.unlock();
+    
     cv.notify_all();
-    // std::cout << "out updatebuffer\n";
+    
     return 0;
 }
 
 int emgAcquire::Client::shutdown(){
+
+    /**
+     *  The function shuts-down the communication witht the server,
+     *  stops the threads running in the background, closes the logfiles
+     *  and clears the buffer
+     *  
+     *  
+     *  Returns:
+     *      0: always
+     *     
+     */
 
     std::cout << "[emgAcquireClient] Shutting-down client..." << std::endl;
     threadMutex.lock();
@@ -1203,6 +1136,15 @@ int emgAcquire::Client::shutdown(){
 
 int emgAcquire::Client::openLogFile(){
     
+    /**
+     *  The function creates a folder to store the logfiles (if need)
+     *  and opens the logfiles
+     *  
+     *  
+     *  Returns:
+     *      0: always
+     *     
+     */
     
     #ifdef _WIN32
         if(CreateDirectory(logFolderName.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError()){
@@ -1251,7 +1193,15 @@ int emgAcquire::Client::openLogFile(){
 
 int emgAcquire::Client::closeLogfile(){
 
-    // close logfile
+    /**
+     *  The function closes the logfiles
+     *
+     *  Returns:
+     *      0: always
+     *     
+     */
+
+    // close logfiles
     wfile.close();
 
     csvfile.close();
@@ -1260,6 +1210,16 @@ int emgAcquire::Client::closeLogfile(){
 }
 
 emgAcquire::Client::~Client(){
+
+    /**
+     *  Class destructor
+     * 
+     *  Checks if the application is still running or
+     *  if a connection with the server is still on
+     *  and if any of the above is true, repeats all the
+     *  steps of the shutdown process
+     *     
+     */
 
     if(isRunning || isConnected){
         std::cout << "[emgAcquireClient] Shutting-down client..." << std::endl;
