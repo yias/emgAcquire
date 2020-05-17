@@ -645,8 +645,6 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         std::copy_n(buffer[i].begin(), nb_samples_to_get, tmp_vec.begin());
 
 
-        // std::cout << "in getsig tmp_vec last before: " << tmp_vec.back() << std::endl; 
-
         // resample the signals if needed
         if(resample){
             std::vector<double> to_resample;
@@ -658,9 +656,9 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
             tmp_vec.erase(tmp_vec.end()-1);
             std::copy_n(buffer[i].begin() + nb_samples_to_get - emgAcquire::SMALL_BUFFER_SIZE, emgAcquire::SMALL_BUFFER_SIZE, small_buffer[i].begin());
         }
-        // std::cout << "in getsig tmp_vec last after: " << tmp_vec.back() << std::endl; 
+        
         returnedMatrix[i] =  tmp_vec;
-        // std::cout << "tmp_size" << tmp_vec.size() << std::endl;
+        
         // remove these elements from the buffer
         buffer[i] = std::vector<double> (buffer[i].begin() + nb_samples_to_get, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
@@ -695,8 +693,7 @@ std::vector< std::vector<double> > emgAcquire::Client::getSignals(){
         buffer[i] = std::vector<double> (buffer[i].begin() + nb_samples_to_get, buffer[i].end());
         buffer[i].resize(bufferSize, 0);
     }
-    // std::cout << "in getsig mdata : " << returnedMatrix[0][0] << ", " << returnedMatrix[1][0] << ", " << returnedMatrix[2][0] << ", " << returnedMatrix[3][0] << std::endl;
-    // std::cout << "in getsig buff : " << buffer[0][0] << ", " << buffer[1][0] << ", " << buffer[2][0] << ", " << buffer[3][0] << std::endl;
+    
     threadMutex.unlock();
 
     // update the flag
@@ -923,12 +920,7 @@ int emgAcquire::Client::listening_to_server(){
                     // std::cout << "size of the matrix: " << dataMat.size() << ", " << dataMat[0].size() << std::endl;
                 }
 
-                // get the latest raw samples as a small buffer
-                // if(initialize_ok){
-                //     for(unsigned int i=0; i< nb_channels_required; i++){
-                //         std::copy_n(dataMat[i].begin(), emgAcquire::SMALL_BUFFER_SIZE, small_buffer[i].begin());
-                //     }
-                // }
+                
 
             }       
         }else{
@@ -1021,7 +1013,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
     
     
     std::lock_guard<std::mutex> lk(threadMutex);
-    // std::cout << "in update mdata : " << mdata[0][0] << ", " << mdata[1][0] << ", " << mdata[2][0] << ", " << mdata[3][0] << std::endl;
+    
     // put the channels in the buffer, one by one, only for the channels required from the user
     for (unsigned int i=0; i<nb_channels_required; i++){
         
@@ -1036,13 +1028,7 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
             is_buffer_full = is_buffer_full || true;
             bufferIndexes[i] = bufferSize;
         }else{
-            // if(mdata[i][0] == 0){
-            //     std::cout << "mbdata is 0\n";
-            // }
             std::copy(mdata[i].begin(), mdata[i].end(), buffer[i].begin() + bufferIndexes[i]);
-            // if(buffer[i][0] == 0){
-            //     std::cout << "buf is 0\n";
-            // }
             
             bufferIndexes[i] += nb_new_samples - 1;
         }
@@ -1053,8 +1039,6 @@ int emgAcquire::Client::updateBuffer(std::vector< std::vector<double> > mdata){
         
         
     }
-
-    // std::cout << "in update buffer : " << buffer[0][0] << ", " << buffer[1][0] << ", " << buffer[2][0] << ", " << buffer[3][0] << std::endl;
 
     // adding the digital channel
     int nb_new_samples = (int)mdata.back().size();
