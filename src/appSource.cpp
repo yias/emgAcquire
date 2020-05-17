@@ -19,7 +19,7 @@ int main(int argc, char **argv){
     }
 
     // define the variable that holds the server IP. In this case, the server would be a local server.
-    const char *srvIP = "128.179.140.26";
+    const char *srvIP = "localhost"; // 128.179.140.26
 
     int svrPort = 10352;
 
@@ -137,6 +137,7 @@ int main(int argc, char **argv){
                 std::cerr << "[emgAcquire] Unable to update the message" << std::endl;
             }
 
+            // std::cout << emgData[0][0] << ", " << emgData[1][0] << ", " << emgData[2][0] << ", " << emgData[3][0] << std::endl;
             // msg=svrHdlr.getFullmsg();
             // jsonWrapper testObj(msg);
             
