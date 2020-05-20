@@ -36,6 +36,33 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "g++ build app (Windows)",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${workspaceFolder}\\src\\appSource.cpp",
+                "${workspaceFolder}\\src\\Acquisition.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp",
+                "${workspaceFolder}\\src\\easy2.acquirecom.tli",
+                "-o",
+                "${workspaceFolder}\\build\\emgAcquire.exe",
+                "-O3",
+                "-lws2_32",
+                "-llibid:089FD02C-0456-4A18-BB0A-C34D001D93BD",
+                "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include"                
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "build client (Windows)",
             "type": "shell",
             "command": "cl.exe",
