@@ -62,5 +62,6 @@
         "list": "cpp",
         "unordered_map": "cpp",
         "xhash": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

@@ -10,7 +10,8 @@
  * 
 **/
 
-#include "emgAcquire.h"
+#include "emgAcquire_dllexport.h"
+// #include "emgAcquire.h"
 
 #ifdef _WIN32
 

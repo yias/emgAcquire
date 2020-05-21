@@ -88,6 +88,37 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "build client dll (Windows)",
+            "type": "shell",
+            "command": "cl.exe",
+            "args": [
+                "/LD",
+                // "/D_USRDLL",
+                // "/D_WINDILL",
+                "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "/Zi",
+                "/EHsc",
+                "/Fe:",
+                "${workspaceFolder}\\build\\emgAcquire_client.exe",
+                "${workspaceFolder}\\client_examples\\client_example.cpp",
+                "${workspaceFolder}\\src\\emgAcquire.cpp",
+                "${workspaceFolder}\\src\\acquireFilters.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp",
+                "/link",
+                "/DLL",
+                "/OUT:${workspaceFolder}\\build\\emgAcquireClient.dll" 
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "g++ client (Windows)",
             "type": "shell",
             "command": "g++",
