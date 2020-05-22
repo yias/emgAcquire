@@ -13,6 +13,12 @@
 #ifndef ACQUIREFILTERS_HPP
 #define ACQUIREFILTERS_HPP
 
+#ifdef MAKEDLL
+    #define EXPORT __declspec(dllexport)
+#else
+    #define EXPORT
+#endif
+
 
 #include <iostream>
 #include <algorithm>
@@ -30,14 +36,14 @@
 
 namespace acquireFilters{
 
-	const double PI = 3.14159265359;
+	const double EXPORT PI = 3.14159265359;
 
 
-	int _gcd(int a, int b);			// a function to compute the greatest common divisor of two integer
+	int EXPORT _gcd(int a, int b);			// a function to compute the greatest common divisor of two integer
 
 
 	template<typename T>
-	std::vector<T> resample_data(std::vector<T> data, float desired_freq, float original_freq, unsigned int nb_of_forget_points=0){
+	EXPORT std::vector<T> resample_data(std::vector<T> data, float desired_freq, float original_freq, unsigned int nb_of_forget_points=0){
 		/**
 		 *  resample function for downsampling. It implements a moving average on a sliding window 
 		 * 
@@ -168,7 +174,7 @@ namespace acquireFilters{
 	}
 
 	template<typename T>
-	std::vector< std::vector<T> > resample_data(std::vector< std::vector<T> > data, float desired_freq, float original_freq, unsigned int nb_of_forget_points=0){
+	EXPORT std::vector< std::vector<T> > resample_data(std::vector< std::vector<T> > data, float desired_freq, float original_freq, unsigned int nb_of_forget_points=0){
 
 		/**
 		 *  resample function for downsampling. It implements a moving average on a sliding window 
@@ -309,7 +315,7 @@ namespace acquireFilters{
 
 
 	template<typename T>
-	float average(std::vector<T> data){
+	EXPORT float average(std::vector<T> data){
 
 		float sumUpdate = 0;
     	// find the average computational time and print it in the terminal
@@ -320,10 +326,10 @@ namespace acquireFilters{
     	return sumUpdate/(float)data.size();
 	}
 
-	double average(std::vector<double> data);
+	double EXPORT average(std::vector<double> data);
 
 	template<typename T>
-	float standDev(std::vector<T> data){
+	EXPORT float standDev(std::vector<T> data){
 
 		float average = acquireFilters::average(data);
 
@@ -337,11 +343,11 @@ namespace acquireFilters{
 	}
 
 
-	double standDev(std::vector<double> data);
+	double EXPORT standDev(std::vector<double> data);
 	
 
 	template<typename T>
-	std::vector<T> digital_resample(std::vector<T> data, int f_size){
+	EXPORT std::vector<T> digital_resample(std::vector<T> data, int f_size){
 
 		int first_val = data[0];
 		int idx = -1;

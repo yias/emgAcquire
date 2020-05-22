@@ -20,7 +20,7 @@
     #include <limits.h>
 #endif
 
-#define MAKEDLL 1
+// #define MAKEDLL 1
 
 #ifdef MAKEDLL
     #define EXPORT __declspec(dllexport)
@@ -159,6 +159,38 @@ namespace emgAcquire{
     #ifdef __linux__
         int dirExists(std::string tpath);
     #endif
+
+    extern "C"{
+        EXPORT Client* new_Client(const char* hostIP, int hostPort, float freq, int nb_ch){
+            std::string hIP (hostIP);
+            std::cout << hIP << std::endl;
+            return new Client(hIP, (unsigned int)hostPort, freq, (unsigned int)nb_ch);
+        }
+        EXPORT int client_initialize(Client *clnt){
+            return clnt->initialize();
+        }
+        void EXPORT client_start(Client* clnt){
+            clnt->start();
+        }
+        void EXPORT client_stop(Client* clnt){
+            clnt->stop();
+        }
+        void EXPORT client_shutdown(Client* clnt){
+            clnt->shutdown();
+        }
+        EXPORT double** client_getSignals(Client* clnt){
+            std::vector< std::vector<double> > tmp_data = clnt->getSignals();
+            int nb_rows = tmp_data.size();
+            int nb_cols = tmp_data[0].size();
+            double **d_ptr = new double * [nb_rows];
+
+            for (int i=0; i < nb_rows; i++){
+                d_ptr[i] = tmp_data[i].data();
+            }
+            // double **test = (clnt->getSignals()).data();
+            return d_ptr;
+        }
+    }
 }
 
 

@@ -97,6 +97,7 @@
             "command": "cl.exe",
             "args": [
                 "/LD",
+                "/DMAKEDLL",
                 // "/D_USRDLL",
                 // "/D_WINDILL",
                 "-I", "${workspaceFolder}\\include",
@@ -117,7 +118,42 @@
                 "${workspaceFolder}\\socketStream\\src\\md5.cpp",
                 "/link",
                 "/DLL",
-                "/OUT:${workspaceFolder}\\build\\emgAcquireClient32.dll" 
+                "/OUT:${workspaceFolder}\\build\\emgAcquireClient.dll" 
+            ],
+            "group": "build",
+            "presentation":{
+                "reveal": "always",
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build client dll x64 (Windows)",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.26.28801\\bin\\Hostx64\\x64\\cl.exe",
+            "args": [
+                "/LD",
+                "/DMAKEDLL",
+                // "/D_USRDLL",
+                // "/D_WINDILL",
+                "-I", "${workspaceFolder}\\include",
+                "-I", "${workspaceFolder}\\socketStream\\include",
+                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                // "/Zi",
+                "/EHsc",
+                "/Fe:",
+                "${workspaceFolder}\\build\\x64\\emgAcquireClient.dll",
+                "/Fo:",
+                "${workspaceFolder}\\build\\obj\\",
+                // "${workspaceFolder}\\build\\emgAcquire_client.exe",
+                // "${workspaceFolder}\\client_examples\\client_example.cpp",
+                "${workspaceFolder}\\src\\emgAcquire.cpp",
+                "${workspaceFolder}\\src\\acquireFilters.cpp",
+                "${workspaceFolder}\\socketStream\\src\\socketStream.cpp",
+                "${workspaceFolder}\\socketStream\\src\\jsonWrapper.cpp",
+                "${workspaceFolder}\\socketStream\\src\\md5.cpp",
+                "/link",
+                "/DLL",
+                "/OUT:${workspaceFolder}\\build\\x64\\emgAcquireClient.dll" 
             ],
             "group": "build",
             "presentation":{
