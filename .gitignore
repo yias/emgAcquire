@@ -1,6 +1,6 @@
 # ignore the contains of the folders logfiles, data and build
 logs/
-# data/
+data/
 build/
 # pyTCP/__pycache__/
 
