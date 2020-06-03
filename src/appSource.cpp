@@ -49,7 +49,7 @@ int main(int argc, char **argv){
     if (isRecording){
         
         nbRepetitions = 30;
-        std::string data_fname = "data\\emg_data_s2.csv";
+        std::string data_fname = "data\\emg_data_tmp.csv";
 
         if (audioCue){
             
@@ -166,10 +166,6 @@ int main(int argc, char **argv){
 
     
 
-    
-    // svrHdlr.printMSGcontentsTypes();
-
-    // svrHdlr.printMSGcontents();
 
 
     std::vector< std::vector<double> > emgData;
