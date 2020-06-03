@@ -3,7 +3,7 @@
 import ctypes
 import numpy as np
 
-lib = ctypes.cdll.LoadLibrary('..\\build\\x64\\emgAcquireClient.dll')
+lib = ctypes.cdll.LoadLibrary('..\\lib\\win32\\x64\\emgAcquireClient.dll')
 
 class emgAcquireClient(object):
     def __init__(self, svrIP="localhost", svrPort=10352, freq=20, nb_channels=16):
@@ -37,7 +37,7 @@ class emgAcquireClient(object):
         lib.client_stop(self.obj)
     
     def shutdown(self):
-        lib.client_shutdown()
+        lib.client_shutdown(self.obj)
     
     def getSignals(self):
         tt = lib.client_getSignals(self.obj)

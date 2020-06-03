@@ -32,12 +32,28 @@ std::mutex threadMutex;
 
 int main(int argc, char **argv){
 
-    Acquisition emgAcq;
+    
 
     float freq = 20.0;
     int nb_channels = 6;
-    bool audioCue = true;
-    bool isRecording = true;
+    std::cout << "How many EMG channels you want to use? [1,16]" << std::endl;
+    std::cin >> nb_channels;
+
+    bool audioCue = false;
+    bool isRecording = false;
+    
+    std::string answer;
+    std::cout << "Do you want to record the signals? [yes/no]" << std::endl;
+    std::cin >> answer;
+    if (!answer.compare("yes")){
+        isRecording = true;
+        std::cout << "Do you want and audio cue for the recordings? [yes/no]" << std::endl;
+        std::cin >> answer;
+        if (!answer.compare("yes")){
+            audioCue = true;
+        }
+    }
+    
     std::vector< std::wstring> sentences;
     std::thread spThread;
     std::ofstream csvFile;
@@ -46,12 +62,15 @@ int main(int argc, char **argv){
     ///////////////////////////////////////////////////////////////////////////////////
     // initialization if isRecording is true
 
-    if (isRecording){
+    if (isRecording){        
         
         nbRepetitions = 30;
         std::string data_fname = "data\\emg_data_tmp.csv";
 
         if (audioCue){
+
+            std::cout << "How many repetition of each set you want on your recordings?" << std::endl;
+            std::cin >> nbRepetitions;
             
             sentences.push_back(L"Flex Wrist");
             sentences.push_back(L"Extend Wrist");
@@ -92,7 +111,7 @@ int main(int argc, char **argv){
 
 
     ////////////////////////////////////////////////////////////////////////////////////
-
+    Acquisition emgAcq;
     if(emgAcq.initialize(freq, nb_channels)<0){
         std::cout << "Unable to initialize devices" << std::endl;
         return -1;
