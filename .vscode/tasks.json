@@ -92,7 +92,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build client dll (Windows)",
+            "label": "build client dll x86 (Windows)",
             "type": "shell",
             "command": "cl.exe",
             "args": [
@@ -106,7 +106,7 @@
                 // "/Zi",
                 "/EHsc",
                 "/Fe:",
-                "${workspaceFolder}\\build\\emgAcquireClient.dll",
+                "${workspaceFolder}\\lib\\win32\\x86\\emgAcquireClient.dll",
                 "/Fo:",
                 "${workspaceFolder}\\build\\obj\\",
                 // "${workspaceFolder}\\build\\emgAcquire_client.exe",
@@ -118,7 +118,7 @@
                 "${workspaceFolder}\\socketStream\\src\\md5.cpp",
                 "/link",
                 "/DLL",
-                "/OUT:${workspaceFolder}\\build\\emgAcquireClient.dll" 
+                "/OUT:${workspaceFolder}\\lib\\win32\\x86\\emgAcquireClient.dll" 
             ],
             "group": "build",
             "presentation":{
