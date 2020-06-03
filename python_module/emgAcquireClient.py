@@ -23,9 +23,16 @@ class emgAcquireClient(object):
         lib.client_shutdown.restype = ctypes.c_void_p
 
         lib.client_getSignals.argtypes = [ctypes.c_void_p]
-        lib.client_getSignals.restype = ctypes.POINTER( ctypes.POINTER(ctypes.c_double) )
+        lib.client_getSignals.restype = ctypes.POINTER(ctypes.c_double)
 
+        self.nb_ch = nb_channels
+        self.frequency = freq
         self.obj = lib.new_Client(svrIP.encode(), svrPort, freq, nb_channels)
+        self.SR = 1000
+        self.nb_samples = self.nb_ch * self.SR / self.frequency
+        self.nb_samples = int(self.nb_samples)
+        print(self.nb_samples)
+        self.data = np.empty((self.nb_samples,), dtype=np.float32)
 
     def initialize(self):
         return lib.client_initialize(self.obj)
@@ -40,5 +47,14 @@ class emgAcquireClient(object):
         lib.client_shutdown(self.obj)
     
     def getSignals(self):
+        returned_data = np.empty((self.nb_samples,), dtype=np.float64)
         tt = lib.client_getSignals(self.obj)
+        # print(tt[0])
+        # print(tt[1])
+        # print(tt[2])
+        # print(tt[34])
+        ctypes.memmove(returned_data.ctypes.data, tt, (self.nb_samples) * np.dtype(np.float64).itemsize)
+        returned_data = np.reshape (returned_data, (self.nb_ch, int(self.SR / self.frequency)))
+        return returned_data
+
 

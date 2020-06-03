@@ -178,17 +178,32 @@ namespace emgAcquire{
         void EXPORT client_shutdown(Client* clnt){
             clnt->shutdown();
         }
-        EXPORT double** client_getSignals(Client* clnt){
+        EXPORT double* client_getSignals(Client* clnt){
             std::vector< std::vector<double> > tmp_data = clnt->getSignals();
             int nb_rows = tmp_data.size();
             int nb_cols = tmp_data[0].size();
-            double **d_ptr = new double * [nb_rows];
+
+            std::vector<double> returnedVector;
+            returnedVector.reserve(nb_rows * nb_cols);
+
+            // double *d_ptr = new double [nb_rows * nb_cols];
 
             for (int i=0; i < nb_rows; i++){
-                d_ptr[i] = tmp_data[i].data();
+                returnedVector.insert(returnedVector.end(), tmp_data[i].begin(), tmp_data[i].end());
+                // memcpy(d_ptr + (i*nb_cols), tmp_data[i].data(), nb_cols);
+                // d_ptr[i] = tmp_data[i].data();
             }
+
+            // std::cout << "size : " << returnedVector.size() << std::endl;
+
+
+            // returnedVector[0] = 1;
+            // returnedVector[1] = 150;
+            // returnedVector[2] = 10531;
+            // returnedVector[34] = 9871;
             // double **test = (clnt->getSignals()).data();
-            return d_ptr;
+            // return d_ptr;
+            return returnedVector.data();
         }
     }
 }

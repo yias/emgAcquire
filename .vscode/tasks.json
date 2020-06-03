@@ -141,7 +141,7 @@
                 // "/Zi",
                 "/EHsc",
                 "/Fe:",
-                "${workspaceFolder}\\build\\x64\\emgAcquireClient.dll",
+                "${workspaceFolder}\\lib\\win32\\x64\\emgAcquireClient.dll",
                 "/Fo:",
                 "${workspaceFolder}\\build\\obj\\",
                 // "${workspaceFolder}\\build\\emgAcquire_client.exe",
@@ -153,7 +153,7 @@
                 "${workspaceFolder}\\socketStream\\src\\md5.cpp",
                 "/link",
                 "/DLL",
-                "/OUT:${workspaceFolder}\\build\\x64\\emgAcquireClient.dll" 
+                "/OUT:${workspaceFolder}\\lib\\win32\\x64\\emgAcquireClient.dll" 
             ],
             "group": "build",
             "presentation":{
