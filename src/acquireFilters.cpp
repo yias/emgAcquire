@@ -8,7 +8,7 @@
  * 
  *  Developer:  Iason Batzianoulis
  *  email:      iasonbatz@gmail.com
- *  License:    MIT
+ *  License:    GNU GPL v3
  * 
 **/
 

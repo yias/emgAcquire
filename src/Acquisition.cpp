@@ -6,7 +6,7 @@
  * 
  *  Developer:  Iason Batzianoulis
  *  email:      iasonbatz@gmail.com
- *  License:    MIT
+ *  License:    GNU GPL v3
  * 
 **/
 
@@ -159,16 +159,6 @@ int Acquisition::initialize(float freq, unsigned int selected_nb_signals){
 
     acquisition_time_interval = 0;
 
-    // std::cout << "Number of initialized analog inputs: " << analogInputDevices.size() << std::endl;
-    // std::cout << "Number of initialized digital inputs: " << digitalInputDevice.size() << std::endl;
-    // std::cout << "analog inputs: " << std::endl;
-    // for(int i=0; i<analogInputDevices.size(); i++){
-    //     std::cout << analogInputDevices[i]->GetId();
-    // }
-    // std::cout << "digital inputs: " << std::endl;
-    // for(int i=0; i<digitalInputDevice.size(); i++){
-    //     std::cout << digitalInputDevice[i]->GetId();
-    // }
     std::cout << "[Acquisition] Input devices initialized" << std::endl;
 
     return 0;
@@ -302,7 +292,6 @@ int Acquisition::update(){
         double timeElapsed = std::chrono::duration<double, std::milli>(cTime - gotNewTime).count();
 
         acquisition_time_interval = timeElapsed;
-        // std::vector<double> tmp_data((int)analogInputDevices.size()+(int)digitalInputDevice.size(), 0);
 
         bool gotit = true;
         // get the updated data for all the analog input devices
@@ -325,25 +314,7 @@ int Acquisition::update(){
             threadMutex.lock();
             analogData[i] = std::vector<double>(quants, quants + quant_count); 
             threadMutex.unlock();
-
-            // double sumquants = 0;
-            // for (int j=0; j<quant_count; j++){
-            //     sumquants += quants[j];
-            // }
-
-            // tmp_data[i]=sumquants/quant_count;
-
-            // print how many quants received
-            // if(i==0)
-            //     std::cout << "quants " << quant_count << "size: " << analogData[i].size() << std::endl;
            
-            // std::cout << "data: ";
-            // for(int j=0; j<quant_count; j++ ){
-            //     std::cout << quants[j] << ", ";
-            // }
-            // std::cout << std::endl;
-
-            
 
         }
 
@@ -362,32 +333,11 @@ int Acquisition::update(){
             digitalData[i] = std::vector<double>(quants, quants + quant_count);
             threadMutex.unlock();
 
-            // double sumquants = 0;
-            // for (int j=0; j<quant_count; j++){
-            //     sumquants += quants[j];
-            // }
-
-            // tmp_data[nb_analog_devices+i]=sumquants/quant_count;
-
-            // print how many quants received
-            // if(i==0)
-            //     std::cout << "quants "<<  quant_count  << std::endl;
-            
-            // std::cout << "data: ";
-            // for(int j=0; j<quant_count; j++ ){
-            //     std::cout << quants[j] << ", ";
-            // }
-            // std::cout << std::endl;
-
-            
+                       
 
         }
 
-        // for(int j=0; j<tmp_data.size(); j++){
-        //     std::cout << tmp_data[j] << "  ";
-        // }
-        // std::cout << std::endl;
-        
+                
         gotNewTime = std::chrono::high_resolution_clock::now();
         return 0;
     }else{

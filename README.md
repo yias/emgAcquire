@@ -4,7 +4,7 @@
 
 A C++ project for acquiring EMG signals from a Noraxon DTS system and stream the packets over a TCP/IP connection. The package works only on Windows but the clients could work on any platform. The signal acquisition in based on the Easy2.AcquireCom library and the TCP/IP communication is based on the socketStream library [link](https://github.com/yias/socketStream). The project is developed on Visual Studio Code.
 
-The package is distributed under the MIT license.
+The package is distributed under the GNU GPL v3 license.
 
 ## Set-up
 
