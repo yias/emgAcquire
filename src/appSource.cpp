@@ -10,6 +10,7 @@
 #include <fstream>
 #include <conio.h>
 #include <mutex>
+#include <codecvt>
 
 #include <atlbase.h>
 
@@ -23,6 +24,8 @@ extern CComModule _Module;
 int speech_handler(std::vector<std::wstring> sentences, int nbRepetitions);
 int write2csv(std::ofstream& csvFile, int nbLabels, int label, double timeStamp, double timeElapsed, std::vector< std::vector<double> > emgData);
 
+std::vector <std::wstring> to_wstring(std::vector<std::string> strVec);
+
 int label;
 
 bool isRunning;
@@ -32,82 +35,236 @@ std::mutex threadMutex;
 
 int main(int argc, char **argv){
 
+    float freq = 20.0;                          // frequency of the acquisition
+    int nb_channels = 6;                        // number of analog channels (EMG signals) to acquire
+
+    bool audioCue = false;                      // flag for using audio cue in the recordings
+    bool isRecording = false;                   // flag for recording the signals to a csv file
+
+    std::vector< std::wstring > sentences;      // the audio cues during recording
+    std::thread spThread;                       // the thread for the audio cues
+    std::ofstream csvFile;                      // the csv file to save the signals and the labels (if the audioCue flag is true)
+    int nbRepetitions;                          // number for repeating the set of cues
+
+    // configuration folder and file
+    std::string configFolder = "cfg\\";
+    std::string configFile = "config.json";
+
+    bool streamingOn = true;                    // flag for streaming the acquired signals to clients
+
+    // const char *srvIP = "localhost";            // the IP for the TCP/IP communication
+    std::string srvIP = "localhost";             // the IP for the TCP/IP communication
+
+    int svrPort = 10352;                        // the port to be used for the TCP/IP communication
+
+    jsonWrapper configDoc;                      // json object to hold the configurations
+
+    // bool configFileOk = false;                  // flag to indicate if the configuration file is loaded properly
+
+    bool doQuenstions = false;                  // flag for entering the configuration manually
+
+    if (argc > 1){
+        configFile = std::string(argv[1]);
+        if (argc > 2){
+            configFolder = std::string(argv[1]) + "\\";
+            configFile = std::string(argv[2]);
+        }
+
+        if (configDoc.fromFile(configFolder + configFile) < 0){
+            std::cout << "[emgAcquire] Unable to load configuration file." << std::endl;
+            std::cout << "[emgAcquire] Enter the specifications maually." << std::endl;
+            doQuenstions = true;
+        }
+
+    }else{
+        std::cout << configFolder + configFile << std::endl;
+        if (configDoc.fromFile(configFolder + configFile) < 0){
+            std::cout << "[emgAcquire] No configuration file provided." << std::endl;
+            std::cout << "[emgAcquire] Enter the specifications maually." << std::endl;
+            doQuenstions = true;
+        }
+    }
     
 
-    float freq = 20.0;
-    int nb_channels = 6;
-    std::cout << "How many EMG channels you want to use? [1,16]" << std::endl;
-    std::cin >> nb_channels;
+    if(doQuenstions){
+        
+        std::cout << "[emgAcquire] How many EMG channels you want to use? [1,16]" << std::endl;
+        std::cin >> nb_channels;
 
-    bool audioCue = false;
-    bool isRecording = false;
-    
-    std::string answer;
-    std::cout << "Do you want to record the signals? [yes/no]" << std::endl;
-    std::cin >> answer;
-    if (!answer.compare("yes")){
-        isRecording = true;
-        std::cout << "Do you want and audio cue for the recordings? [yes/no]" << std::endl;
+        std::string answer;
+        std::cout << "[emgAcquire] Do you want to record the signals? [yes/no]" << std::endl;
         std::cin >> answer;
         if (!answer.compare("yes")){
-            audioCue = true;
-        }
-    }
-    
-    std::vector< std::wstring> sentences;
-    std::thread spThread;
-    std::ofstream csvFile;
-    int nbRepetitions;
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    // initialization if isRecording is true
-
-    if (isRecording){        
-        
-        nbRepetitions = 30;
-        std::string data_fname = "data\\emg_data_tmp.csv";
-
-        if (audioCue){
-
-            std::cout << "How many repetition of each set you want on your recordings?" << std::endl;
-            std::cin >> nbRepetitions;
-            
-            sentences.push_back(L"Flex Wrist");
-            sentences.push_back(L"Extend Wrist");
-            sentences.push_back(L"Extend Thumb");
-            sentences.push_back(L"Flex Biceps");
-            sentences.push_back(L"Flex Triceps");
-            sentences.push_back(L"Flex Shoulder");
-        }
-
-        
-
-        csvFile.open(data_fname);
-        if(!csvFile.is_open()){
-            std::cerr << "[emgAcquireClient] Unable to open csv logfile" <<std::endl;
-            return -2;
-        }
-
-        std::string header("time;");
-
-        for (int i=0; i<nb_channels; i++){
-            header += ("ch" + std::to_string(i+1) + ";");
-        }
-         
-
-        if (audioCue){
-            for(int i=0; i<(int)sentences.size();i++){
-                header += ("label" + std::to_string(i+1) + ";");
+            isRecording = true;
+            std::cout << "[emgAcquire] Do you want and audio cue for the recordings? [yes/no]" << std::endl;
+            std::cin >> answer;
+            if (!answer.compare("yes")){
+                audioCue = true;
             }
         }
-
-        header += "\n";
-
-        csvFile << header;
-
-        label = 0;
         
+        
+
+        ///////////////////////////////////////////////////////////////////////////////////
+        // initialization if isRecording is true
+
+        if (isRecording){        
+            
+            nbRepetitions = 30;
+            std::string data_fname = "data\\emg_data_tmp.csv";
+
+            if (audioCue){
+
+                std::cout << "[emgAcquire] How many repetition of each set you want on your recordings?" << std::endl;
+                std::cin >> nbRepetitions;
+                
+                sentences.push_back(L"Flex Wrist");
+                sentences.push_back(L"Extend Wrist");
+                sentences.push_back(L"Extend Thumb");
+                sentences.push_back(L"Flex Biceps");
+                sentences.push_back(L"Flex Triceps");
+                sentences.push_back(L"Flex Shoulder");
+            }
+
+            
+
+            csvFile.open(data_fname);
+            if(!csvFile.is_open()){
+                std::cerr << "[emgAcquire] Unable to open csv logfile" <<std::endl;
+                return -2;
+            }
+
+            std::string header("time;");
+
+            for (int i=0; i<nb_channels; i++){
+                header += ("ch" + std::to_string(i+1) + ";");
+            }
+            
+
+            if (audioCue){
+                for(int i=0; i<(int)sentences.size();i++){
+                    header += ("label" + std::to_string(i+1) + ";");
+                }
+            }
+
+            header += "\n";
+
+            csvFile << header;
+
+            label = 0;
+            
+        }
+    }else{
+        std::cout << configDoc.getAsString() << std::endl;
+        nb_channels = configDoc.getField<rapidJson_types::Int>("nb_channels");
+        if (configDoc.hasField("nb_channels")){
+            nb_channels = configDoc.getField<rapidJson_types::Int>("nb_channels");
+            if ( (nb_channels < 1) || (nb_channels>16) ){
+                std::cerr << "[emgAcquire] The number of channels must be an integer from 1 to 16." <<std::endl;
+                std::cout << "[emgAcquire] Terminating program." << std::endl;
+                return -3;
+            }
+        }else{
+            std::cerr << "[emgAcquire] The configuration file must contain a field \"nb_channels\" with an integer value from 1 to 16." <<std::endl;
+            std::cout << "[emgAcquire] Terminating program." << std::endl;
+            return -4;
+        }
+        
+        if (configDoc.hasField("RecordSignals")){
+            isRecording = (bool) configDoc.getField<rapidJson_types::Int>("RecordSignals");
+        }
+
+        if (isRecording){
+            if ( configDoc.hasField("audioCue") ){
+                audioCue = (bool) configDoc.getField<rapidJson_types::Int>("audioCue");
+            }
+
+            if (audioCue){
+                if ( configDoc.hasField("nb_repetitions") ){
+                    nbRepetitions = configDoc.getField<rapidJson_types::Int>("nb_repetitions");
+                }else{
+                    std::cerr << "[emgAcquire] If audio cue is enabled, a field \"nb_repetitions\" should exist with the number of repetitios of the cues' set." <<std::endl;
+                    std::cout << "[emgAcquire] Terminating program." << std::endl;
+                    return -5;
+                }
+                if ( configDoc.hasField("cues") ){
+                    std::vector < std::string > tmp_sentences = configDoc.getField<rapidJson_types::VecString>("cues");
+
+                    sentences = to_wstring(tmp_sentences);
+                    
+                }else{
+                    std::cerr << "[emgAcquire] If audio cue is enabled, a field \"cues\" should exist with a vector of strings similar to [\"cue on\", \"cue two\", ...]." <<std::endl;
+                    std::cout << "[emgAcquire] Terminating program." << std::endl;
+                }
+            }
+
+            std::string data_fname = "data\\emg_data_tmp.csv";
+            if ( configDoc.hasField("saveFile") ){
+                data_fname = configDoc.getField<rapidJson_types::String>("saveFile") + ".csv";
+            }
+
+            std::cout << "selected savefile name: " << data_fname << std::endl;
+
+            csvFile.open(data_fname);
+            if(!csvFile.is_open()){
+                std::cerr << "[emgAcquire] Unable to open csv file" <<std::endl;
+                return -2;
+            }
+
+            std::string header("time;");
+
+            for (int i=0; i<nb_channels; i++){
+                header += ("ch" + std::to_string(i+1) + ";");
+            }
+            
+
+            if (audioCue){
+                for(int i=0; i<(int)sentences.size();i++){
+                    header += ("label" + std::to_string(i+1) + ";");
+                }
+            }
+
+            header += "\n";
+
+            csvFile << header;
+
+            label = 0;
+        }
+
+        if (configDoc.hasField("streamSignals")){
+            streamingOn = (bool) configDoc.getField<rapidJson_types::Int>("streamSignals");
+        }
+
+        if (streamingOn){
+            if ( configDoc.hasField("serverIP") ){
+                srvIP = configDoc.getField<rapidJson_types::String>("serverIP");
+            }
+            if( configDoc.hasField("port") ){
+                svrPort = configDoc.getField<rapidJson_types::Int>("port");
+            }
+        }
     }
+
+
+    // std::cout << "freq: " << freq << std::endl;
+    // std::cout << "nb_channels: " << nb_channels << std::endl;
+
+    // std::cout << "audioCue: " << audioCue << std::endl;
+    // std::cout << "isRecording: " << isRecording << std::endl;
+
+    // std::cout << "nbRepetitions: " << nbRepetitions << std::endl;                         
+
+    // std::cout << "size of sentences: " << sentences.size() << std::endl;
+    // for(auto v: sentences){
+    //     std::wcout << v << std::endl;
+    // }
+    // std::cout << "streamingOn: " << streamingOn << std::endl;
+
+    // std::cout << "srvIP: " << std::string(srvIP) << std::endl;
+
+    // std::cout << "svrPort: " << svrPort << std::endl;
+
+    
 
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -117,20 +274,17 @@ int main(int argc, char **argv){
         return -1;
     }
 
-    // define the variable that holds the server IP. In this case, the server would be a local server.
-    const char *srvIP = "localhost"; // 128.179.140.26
+    
 
-    int svrPort = 10352;
-
-    // if no new server IP is defined from the user, continue with the pre-defined server IP (localhost)
-    if(argc!=2){
-        std::cout << "No server IP provided. Continue with localhost" << std::endl;
-    }else{
-        srvIP=argv[1];
-    }
+    // // if no new server IP is defined from the user, continue with the pre-defined server IP (localhost)
+    // if(argc!=2){
+    //     std::cout << "No server IP provided. Continue with localhost" << std::endl;
+    // }else{
+    //     srvIP=argv[1];
+    // }
 
     // create an sockectStream object with the selected server IP address and set it up as a server
-    socketStream svrHdlr(srvIP, svrPort, SOCKETSTREAM::SOCKETSTREAM_SERVER);
+    socketStream svrHdlr(srvIP.c_str(), svrPort, SOCKETSTREAM::SOCKETSTREAM_SERVER);
 
     // decalre a variable as a vector of strings for containing the fields of the message
     std::vector <std::string> fields;
@@ -233,11 +387,11 @@ int main(int argc, char **argv){
         if(isNewMsg){
             // std::cout << "size: " << emgData.size() << ", " << emgData[0].size() << std::endl;
             if(svrHdlr.updateMSG(fields[6], emgAcq.getTimeInterval()) ){
-                std::cerr << "Unable to update the message" << std::endl;
+                std::cerr << "[emgAcquire] Unable to update the time interval" << std::endl;
                 return -2;
             }
             if(svrHdlr.updateMSG(fields[5], emgData) ){
-                std::cerr << "[emgAcquire] Unable to update the message" << std::endl;
+                std::cerr << "[emgAcquire] Unable to update the signals" << std::endl;
             }
 
             // std::cout << emgData[0][0] << ", " << emgData[1][0] << ", " << emgData[2][0] << ", " << emgData[3][0] << std::endl;
@@ -420,4 +574,15 @@ int write2csv(std::ofstream& csvFile, int nbLabels, int label, double timeStamp,
 
 
     return 0;
+}
+
+std::vector <std::wstring> to_wstring(std::vector <std::string> strVec){
+    using convert_t = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_t, wchar_t> strconverter;
+    std::vector <std::wstring> rVec;
+    for (auto v: strVec){
+        rVec.push_back( strconverter.from_bytes(v) );
+    }
+
+    return rVec;
 }

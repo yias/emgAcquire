@@ -1,0 +1,6 @@
+{
+    "nb_channels": 1,
+    "streamSignals": 1,
+    "serverIP": "localhost",
+    "port": 10352
+}

@@ -1,0 +1,11 @@
+{
+    "nb_channels": 2,
+    "RecordSignals": 1,
+    "saveFile": "mydata",
+    "streamSignals": 1,
+    "serverIP": "128.123.12.23",
+    "port": 1222,
+    "audioCue": 1,
+    "nb_repetitions": 2,
+    "cues": ["one", "two", "three", "Four"]
+}
