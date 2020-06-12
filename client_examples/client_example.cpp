@@ -55,8 +55,6 @@ int main(){
         start = std::chrono::high_resolution_clock::now();
         mydata = emgListener.getSignals();
 
-        // std::cout << "data shape: " << mydata.size() << ", " << mydata[0].size() << std::endl;
-
         if(kbhit()){
             if(getch()=='q')
                 break;
