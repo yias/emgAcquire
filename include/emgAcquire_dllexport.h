@@ -1,7 +1,7 @@
 /** 
  *  Copyright (c) 2020 Iason Batzianoulis
  *  
- *  Acquisition header file
+ *  emgAcquire client header file for exporting functions to lib
  *  
  * 
  *  Developer:  Iason Batzianoulis
@@ -186,23 +186,11 @@ namespace emgAcquire{
             std::vector<double> returnedVector;
             returnedVector.reserve(nb_rows * nb_cols);
 
-            // double *d_ptr = new double [nb_rows * nb_cols];
-
             for (int i=0; i < nb_rows; i++){
                 returnedVector.insert(returnedVector.end(), tmp_data[i].begin(), tmp_data[i].end());
-                // memcpy(d_ptr + (i*nb_cols), tmp_data[i].data(), nb_cols);
-                // d_ptr[i] = tmp_data[i].data();
             }
 
-            // std::cout << "size : " << returnedVector.size() << std::endl;
-
-
-            // returnedVector[0] = 1;
-            // returnedVector[1] = 150;
-            // returnedVector[2] = 10531;
-            // returnedVector[34] = 9871;
-            // double **test = (clnt->getSignals()).data();
-            // return d_ptr;
+            
             return returnedVector.data();
         }
     }

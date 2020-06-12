@@ -9,7 +9,10 @@ import matplotlib.pyplot as plt
 
 
 # directory of the emgAcquireClient python_module 
-emgAquire_dir = str(pathlib.Path().absolute()) + "\\..\\python_module"
+if sys.platform == 'linux':
+    emgAquire_dir = str(pathlib.Path().absolute()) + "/../python_module"
+else:
+    emgAquire_dir = str(pathlib.Path().absolute()) + "\\..\\python_module"
 
 # append the path including the directory of the python_module
 sys.path.append(emgAquire_dir)

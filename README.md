@@ -12,7 +12,12 @@ The package is distributed under the GNU GPL v3 license.
 
 2) Clone the rapidjson package as it is described on the socketStream repo [link](https://github.com/yias/socketStream).
 
-3) Clone and compile the package
+3) Clone package with its submodules
+
+```bash
+$ git clone https://github.com/yias/emgAcquire.git
+$ git submodule update --init
+```
 
 Navigate in the directory of the package and run the executable emgAcquire.exe from a command prompt:
 

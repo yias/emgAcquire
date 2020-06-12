@@ -1,7 +1,7 @@
 /** 
  *  Copyright (c) 2020 Iason Batzianoulis
  *  
- *  emgAcquire source file
+ *  emgAcquire client source file
  *  
  * 
  *  Developer:  Iason Batzianoulis

@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 
+import sys
 import ctypes
 import numpy as np
 
-lib = ctypes.cdll.LoadLibrary('..\\lib\\win32\\x64\\emgAcquireClient.dll')
+if sys.platform == 'linux':
+    lib = ctypes.cdll.LoadLibrary('../lib/linux/x64/libemgAcquireClient.so')
+else:
+    lib = ctypes.cdll.LoadLibrary('..\\lib\\win32\\x64\\emgAcquireClient.dll')
 
 class emgAcquireClient(object):
     def __init__(self, svrIP="localhost", svrPort=10352, freq=20, nb_channels=16):
@@ -31,7 +35,6 @@ class emgAcquireClient(object):
         self.SR = 1000
         self.nb_samples = self.nb_ch * self.SR / self.frequency
         self.nb_samples = int(self.nb_samples)
-        print(self.nb_samples)
         self.data = np.empty((self.nb_samples,), dtype=np.float32)
 
     def initialize(self):
@@ -48,13 +51,13 @@ class emgAcquireClient(object):
     
     def getSignals(self):
         returned_data = np.empty((self.nb_samples,), dtype=np.float64)
+
         tt = lib.client_getSignals(self.obj)
-        # print(tt[0])
-        # print(tt[1])
-        # print(tt[2])
-        # print(tt[34])
+
         ctypes.memmove(returned_data.ctypes.data, tt, (self.nb_samples) * np.dtype(np.float64).itemsize)
+
         returned_data = np.reshape (returned_data, (self.nb_ch, int(self.SR / self.frequency)))
+
         return returned_data
 
 
