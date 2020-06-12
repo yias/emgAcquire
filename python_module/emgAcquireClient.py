@@ -5,7 +5,7 @@ import ctypes
 import numpy as np
 
 if sys.platform == 'linux':
-    lib = ctypes.cdll.LoadLibrary('../lib/linux/x64/libemgAcquireClient.so')
+    lib = ctypes.cdll.LoadLibrary('../lib/linux/shared/x64/libemgAcquireClient.so')
 else:
     lib = ctypes.cdll.LoadLibrary('..\\lib\\win32\\x64\\emgAcquireClient.dll')
 

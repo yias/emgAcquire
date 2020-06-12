@@ -23,8 +23,10 @@ EMGACQUIRE_DIR = $(shell pwd)
 OUTPUT_DIR = ./build
 OUTPUT_OBJ_DIRx64 = $(OUTPUT_DIR)/obj/x64
 OUTPUT_OBJ_DIRx86 = $(OUTPUT_DIR)/obj/x86
-EXP_LIB_OUTPUT_DIRx64 = ./lib/linux/x64
-EXP_LIB_OUTPUT_DIRx86 = ./lib/linux/x86
+EXP_LIB_OUTPUT_DIRx64 = ./lib/linux/shared/x64
+EXP_LIB_OUTPUT_DIRx86 = ./lib/linux/shared/x86
+EXP_LIB_OUTPUT_STATIC_DIRx64 = ./lib/linux/static/x64
+EXP_LIB_OUTPUT_STATIC_DIRx86 = ./lib/linux/static/x86
 
 # set the compiler and its flags
 CXX = g++
@@ -51,23 +53,17 @@ CLIENT_OBJSx86 = $(patsubst %,$(OUTPUT_OBJ_DIRx86)/%,$(_CLIENT_OBJS))
 # set the libraries needed for compiling
 LIBS = -lpthread
 
-$(OUTPUT_OBJ_DIR)./%.o: %.cpp $(INCLUDE_PARAMS)
-	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 
-teObj: 
-	$(CXX) $(CLIENT_OBJS) -o $@ $^ $(CXXFLAGS) $(LIBS)
+test: makeOutDir clientExample
 
+all: makeOutDir makeObjetsDir makeLibsDir clientExample generateObjectsx64 generateLibx64 generateStaticLibx64 generateObjectsx86 generateLibx86 generateStaticLibx86
 
-test: teObj
+libs: makeOutDir makeObjetsDir makeLibsDir generateObjectsx64 generateLibx64 generateStaticLibx64 generateObjectsx86 generateLibx86 generateStaticLibx86
 
-all: makeOutDir makeObjetsDir clientExample
+libsx64 : makeObjetsDir generateObjectsx64 generateLibx64 generateStaticLibx64
 
-libs: makeOutDir makeObjetsDir makeLibsDir generateObjectsx64 generateLibx64 generateObjectsx86 generateLibx86
-
-libsx64 : makeObjetsDir generateObjectsx64 generateLibx64
-
-libsx86: makeObjetsDir generateObjectsx86 generateLibx86
+libsx86: makeObjetsDir generateObjectsx86 generateLibx86 generateStaticLibx86
 
 $(OUTPUT_OBJ_DIRx64)/emgAcquire.o: $(info $(greenC)$(boldT) --> generating emgAcquireClient object x64 $(yellowC)==>$(reset)) $(SRC_DIR)/emgAcquire.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x64_FLAG) -fpic
@@ -119,31 +115,31 @@ generateLibx64:
 	fi
 
 
-$(OUTPUT_OBJ_DIRx86)/emgAcquire.o: $(info $(greenC)$(boldT) --> generating emgAcquireClient object x64 $(yellowC)==>$(reset)) $(SRC_DIR)/emgAcquire.cpp 
+$(OUTPUT_OBJ_DIRx86)/emgAcquire.o: $(info $(greenC)$(boldT) --> generating emgAcquireClient object x86 $(yellowC)==>$(reset)) $(SRC_DIR)/emgAcquire.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x86_FLAG) -fpic
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
 	fi
 
-$(OUTPUT_OBJ_DIRx86)/acquireFilters.o: $(info $(greenC)$(boldT) --> generating acquireFilters object x64 $(yellowC)==>$(reset)) $(SRC_DIR)/acquireFilters.cpp 
+$(OUTPUT_OBJ_DIRx86)/acquireFilters.o: $(info $(greenC)$(boldT) --> generating acquireFilters object x86 $(yellowC)==>$(reset)) $(SRC_DIR)/acquireFilters.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x86_FLAG) -fpic
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
 	fi
 
-$(OUTPUT_OBJ_DIRx86)/socketStream.o: $(info $(greenC)$(boldT) --> generating socketStream object x64 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/socketStream.cpp 
+$(OUTPUT_OBJ_DIRx86)/socketStream.o: $(info $(greenC)$(boldT) --> generating socketStream object x86 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/socketStream.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x86_FLAG) -fpic
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
 	fi
 
-$(OUTPUT_OBJ_DIRx86)/jsonWrapper.o: $(info $(greenC)$(boldT) --> generating jsonWrapper object x64 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/jsonWrapper.cpp 
+$(OUTPUT_OBJ_DIRx86)/jsonWrapper.o: $(info $(greenC)$(boldT) --> generating jsonWrapper object x86 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/jsonWrapper.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x86_FLAG) -fpic
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
 	fi
 
-$(OUTPUT_OBJ_DIRx86)/md5.o: $(info $(greenC)$(boldT) --> generating md5 object x64 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/md5.cpp 
+$(OUTPUT_OBJ_DIRx86)/md5.o: $(info $(greenC)$(boldT) --> generating md5 object x86 $(yellowC)==>$(reset)) $(SOCKETSTREAM_SRC_DIR)/md5.cpp 
 	$(CXX) -c -o $@ $< $(INCLUDE_PARAMS) $(CXXFLAGS) $(CXX_x86_FLAG) -fpic
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
@@ -179,6 +175,24 @@ clientExample:
 	@if test $$? -eq 0;\
 	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
 	fi
+
+
+# generate static libraries
+generateStaticLibx64:
+	$(info $(greenC)$(boldT) --> generating emgAcquire client static library x64 $(yellowC)==>$(reset))
+	@ar rcs $(EXP_LIB_OUTPUT_STATIC_DIRx64)/libemgAcquireClient.a $(CLIENT_OBJSx64)
+	@if test $$? -eq 0;\
+	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
+	fi
+
+
+generateStaticLibx86:
+	$(info $(greenC)$(boldT) --> generating emgAcquire client static library x86 $(yellowC)==>$(reset))
+	@ar rcs $(EXP_LIB_OUTPUT_STATIC_DIRx86)/libemgAcquireClient.a $(CLIENT_OBJSx86)
+	@if test $$? -eq 0;\
+	then tput setaf 4; tput bold; echo " --> OK"; tput sgr0; \
+	fi
+
 
 
 # echo the path of the cpp dependencies
@@ -237,6 +251,22 @@ makeLibsDir:
 	else \
 		tput setaf 2; printf " -->"; tput bold; printf " creating export libs directory ${EXP_LIB_OUTPUT_DIRx86} " ; tput setaf 3; printf " ==>\n"; tput sgr0;\
 		mkdir -p ${EXP_LIB_OUTPUT_DIRx86}; \
+	fi
+	@if test -d ${EXP_LIB_OUTPUT_STATIC_DIRx64}; \
+	then \
+		tput setaf 4; tput bold; printf " --> export libs directory "${EXP_LIB_OUTPUT_STATIC_DIRx64}" alread exists"; tput setaf 3; printf " ==>\n";\
+		tput sgr0;\
+	else \
+		tput setaf 2; printf " -->"; tput bold; printf " creating export libs directory ${EXP_LIB_OUTPUT_STATIC_DIRx64} " ; tput setaf 3; printf " ==>\n"; tput sgr0;\
+		mkdir -p ${EXP_LIB_OUTPUT_STATIC_DIRx64}; \
+	fi
+	@if test -d ${EXP_LIB_OUTPUT_STATIC_DIRx86}; \
+	then \
+		tput setaf 4; tput bold; printf " --> export libs directory "${EXP_LIB_OUTPUT_STATIC_DIRx86}" alread exists"; tput setaf 3; printf " ==>\n";\
+		tput sgr0;\
+	else \
+		tput setaf 2; printf " -->"; tput bold; printf " creating export libs directory ${EXP_LIB_OUTPUT_STATIC_DIRx86} " ; tput setaf 3; printf " ==>\n"; tput sgr0;\
+		mkdir -p ${EXP_LIB_OUTPUT_STATIC_DIRx86}; \
 	fi
 
 
