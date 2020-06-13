@@ -6,6 +6,13 @@ A C++ project for acquiring EMG signals from a Noraxon DTS system and stream the
 
 The package is distributed under the GNU GPL v3 license.
 
+## Description
+
+The emgAcquire application is a software for acquiring, record and stream EMG signals. Additionally, it provides the option of introducing audio cues during the recording of the signals. The application can run only on Windows systems.
+
+The package also provides a cross-platform C++ API and Python module for receiving the EMG signals remotely, the emgAcquireClient. Examples of how to use the emgAcquireClient API and Python module can be found in the folder "client_examples". The emgAcquireClient API and Python module is tested on Windows and Linux machines, while hopefully it works on MacOS too.
+
+
 ## Set-up
 
 1) Ask Noraxon support service for the Easy2.AcquireCom library and install it on your PC.
