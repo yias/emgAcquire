@@ -51,8 +51,40 @@ The emgAcquireClient API depends on the Tencent's rapidjson and the socketStream
 Navigate in the directory of the package and run the executable emgAcquire.exe from a command prompt:
 
 ```bash
-> .\build\emgAcquire.exe 
+> .\bin\emgAcquire.exe 
 ```
+
+Once the application has been launched, it will ask you to fill the options of acquisition. This optios are:
+- the number of EMG channels to acquire (integer from 1 to 16)
+- recording the signals to a csv file (true or false - yes or no)
+- in the case of recording the signals:
+    - name of the file to save the signals (string)
+- streaming the signals (true or false - yes or no)
+- in the case of streaming the seignals:
+    - the IP of the machine (string)
+    - and the port to open (integer)
+- if an audio cue is required for recording the singals (true or false - yes or no)
+- in the case an audio cue is required: 
+    - the sentences of the cues (array of strings: ["one", "two", "three", "Four"])
+    - the number of repetitions of the audio cues (integer)
+
+Except the number of EMG signals to be acquired, all the other options are optional. There is also the option of introducing a configuration file as input argument of the executable. 
+
+```bash
+> .\bin\emgAcquire.exe [name_of_config_file].json
+```
+
+The configuration file should be a json file and it should follow the json syntax. Additionally, the configuration file should exist in the folder "cfg". A minimal configuration file for acquire 1 signal and stream the data locally on the machine is the following:
+```json
+{
+    "nb_channels": 1,
+    "streamSignals": 1,
+    "serverIP": "localhost",
+    "port": 10352
+}
+```
+
+An example of configuration file with all the options is included in the "cfg" folder.
 
 ## Noraxon DTS Set-up
 
@@ -73,3 +105,77 @@ In the tab "DTS Sensors" add the sensors you would like to receive the signals f
 ![](docs/pics/dts_3.png)
 
 Click "Ok" to save the configuration and close the two windows. The acquisition of the signals will start soon after that.
+
+## emgAcquireClient C++ API
+
+An example on how to use the emgAcquireClient C++ API could be found in the folder "client_examples". A mimimal code for running acquiring the signals from the server is the following:
+
+```c++
+// define the acquisition frequency of the packet signals
+float freq = 20;
+
+// define the number of channels to acquire
+float nb_ch = 6;
+
+// create an emgAcquireClient object for listening to the server
+emgAcquire::Client emgListener(freq, nb_ch);
+
+// initialize the listener (connecting to the server)
+emgListener.initialize()
+
+// define a vector of vectors to host the data
+std::vector< std::vector<double>> mydata;
+
+// start filling the buffer
+emgListener.start();
+
+// get the next set of data from the buffer
+mydata = emgListener.getSignals();
+
+// shutdown the listener
+emgListener.shutdown();
+```
+
+In order to the client initialization to succeed, the server of emgAcquire app should be running.
+
+## emgAcquireClient Python module
+
+Examples on how to use the emgAcquireClient Python module could be found in the folder "client_examples". A mimimal code for running acquiring the signals from the server is the following:
+
+```python
+import sys
+import pathlib
+
+# deifne the directory of the emgAcquireClient python_module 
+emgAquire_dir = str(pathlib.Path().absolute()) + "/../python_module"
+
+# import the module
+
+# append the path including the directory of the python_module
+sys.path.append(emgAquire_dir)
+
+# import the module
+import emgAcquireClient
+
+
+# define number of channels to acquire
+nb_ch = 6
+
+# create an emgClient object for acquiring the data
+emgClient = emgAcquireClient.emgAcquireClient(nb_channels=nb_ch)
+
+# initialize the node
+init_test = emgClient.initialize()
+
+# start filling the buffer
+emgClient.start()
+
+# get the next set of data from the buffer
+emg_data = emgClient.getSignals()
+
+# shutdown the acquisition node
+emgClient.shutdown()
+
+```
+
+In order to the client initialization to succeed, the server of emgAcquire app should be running.
