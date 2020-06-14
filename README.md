@@ -8,23 +8,45 @@ The package is distributed under the GNU GPL v3 license.
 
 ## Description
 
-The emgAcquire application is a software for acquiring, record and stream EMG signals. Additionally, it provides the option of introducing audio cues during the recording of the signals. The application can run only on Windows systems.
+The emgAcquire application is a software for acquiring, record and stream EMG signals. Additionally, it provides the option of introducing audio cues during the recording of the signals. The application can be found in folder "bin" and it runs only on Windows systems.
 
 The package also provides a cross-platform C++ API and Python module for receiving the EMG signals remotely, the emgAcquireClient. Examples of how to use the emgAcquireClient API and Python module can be found in the folder "client_examples". The emgAcquireClient API and Python module is tested on Windows and Linux machines, while hopefully it works on MacOS too.
 
 
 ## Set-up
 
-1) Ask Noraxon support service for the Easy2.AcquireCom library and install it on your PC.
+<ins> Main application </ins>
 
-2) Clone the rapidjson package as it is described on the socketStream repo [link](https://github.com/yias/socketStream).
+The application has a run-time dependency on the Easy2.AcquireCom library, meaning that Easy2.AcquireCom should be installed on the system before running the application. To get the Easy2.AcquireCom library, contact Noraxon support service for the Noraxon.Acquire patch.
 
-3) Clone package with its submodules
+The pre-compiled executable is inside the "bin" folder and it doesn't require any further installation. If you need to re-compile the application, the package has the following dependencies:
+
+1) the rapidjson library from Tencent. This is a third-party dependency, the headers of which should be included for compilation. The rapidjson library can be fould in its github repo [link](https://github.com/Tencent/rapidjson).
+
+2) the Microsoft Active Template Library (ATL). ATL can be installed on the system through a Visual Studio Installer. It is also strongly suggested to install the Microsoft's C++ Build Tools for Visual Studio, together with the ATL package through a Visual Studio Installer. However, there is no requirement to install or compile the project on Visual Studio. 
+
+3) the socketStream package which handles the TCP/IP connection with the client. socketStream is also a submodule of the emgAcquire package and could be cloned together by typing:
+
+```bash
+$ git clone --recurse-submodule https://github.com/yias/emgAcquire.git
+```
+or 
 
 ```bash
 $ git clone https://github.com/yias/emgAcquire.git
 $ git submodule update --init
 ```
+
+In order to have the proper compilation environment for the emgAcquire app, it is preferred to compile the project from a Developer Powershell for VS2019. Since Easy2.AcquireCom is a 32-bit application, the target of the compiler should be the x86 architecture. 
+
+Furthermore, it is possible to compile the project with both g++ and Visual C++ (cl). However, it is suggested to compile the project with Visual C++, if you don't have g++ installed on your system and you want to avoid looking for linking libraries. In case you want to use g++, the ws2_32 library should be linked to the project (add -lws2_32 in the compilation command). If you use VSCode as IDE, look at the "tasks.json" file inside the folder ".vscode" for examples of compilation commands with Visual C++ and g++. 
+
+
+<ins> Client library </ins>
+
+The emgAcquireClient API depends on the Tencent's rapidjson and the socketStream packages only (steps 1 and 3 are required). The API can work on both Linux and Windows systems and can be compiled for x86 (32-bit) and x64 (64-bit) applications. In case you use g++ for compliling the project, the ws2_32 linrary should be linked for Windows systems whilst the pthread library should be linked for Linux systems. Examples of compilation commands could be found in the provided makefile. 
+
+## Running the application
 
 Navigate in the directory of the package and run the executable emgAcquire.exe from a command prompt:
 
