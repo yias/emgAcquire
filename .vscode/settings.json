@@ -61,7 +61,21 @@
         "iterator": "cpp",
         "list": "cpp",
         "unordered_map": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "clocale": "cpp",
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp",
+        "set": "cpp",
+        "string_view": "cpp",
+        "iomanip": "cpp",
+        "cinttypes": "cpp"
     },
     "cmake.configureOnOpen": false
 }
