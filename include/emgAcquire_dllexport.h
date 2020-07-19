@@ -177,6 +177,7 @@ namespace emgAcquire{
         }
         void EXPORT client_shutdown(Client* clnt){
             clnt->shutdown();
+            delete clnt;
         }
         EXPORT double* client_getSignals(Client* clnt){
             std::vector< std::vector<double> > tmp_data = clnt->getSignals();
