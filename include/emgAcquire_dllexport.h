@@ -159,9 +159,10 @@ namespace emgAcquire{
     #ifdef __linux__
         int dirExists(std::string tpath);
     #endif
-
+    double *returned_p;
     extern "C"{
         EXPORT Client* new_Client(const char* hostIP, int hostPort, float freq, int nb_ch){
+            returned_p = new double[nb_ch*50]
             std::string hIP (hostIP);
             std::cout << hIP << std::endl;
             return new Client(hIP, (unsigned int)hostPort, freq, (unsigned int)nb_ch);
@@ -178,6 +179,7 @@ namespace emgAcquire{
         void EXPORT client_shutdown(Client* clnt){
             clnt->shutdown();
             delete clnt;
+            delete returned_p;
         }
         EXPORT double* client_getSignals(Client* clnt){
             std::vector< std::vector<double> > tmp_data = clnt->getSignals();
@@ -191,8 +193,8 @@ namespace emgAcquire{
                 returnedVector.insert(returnedVector.end(), tmp_data[i].begin(), tmp_data[i].end());
             }
 
-            
-            return returnedVector.data();
+            *returned_p = *returnedVector.data();
+            return returned_p;
         }
     }
 }
