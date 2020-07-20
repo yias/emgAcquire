@@ -71,7 +71,7 @@
             "args": [
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "-I", "${workspaceFolder}\\socketStream\\rapidjson\\include",
                 "/Zi",
                 "/EHsc",
                 "/Fe:",
@@ -100,7 +100,7 @@
                 "/DMAKEDLL",
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "-I", "$${workspaceFolder}\\socketStream\\rapidjson\\include",
                 "/EHsc",
                 "/Fe:",
                 "${workspaceFolder}\\lib\\win32\\x86\\emgAcquireClient.dll",
@@ -132,7 +132,7 @@
                 // "/D_WINDILL",
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "-I", "${workspaceFolder}\\socketStream\\rapidjson\\include",
                 // "/Zi",
                 "/EHsc",
                 "/Fe:",
@@ -174,7 +174,7 @@
                 "-lws2_32",
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include"
+                "-I", "${workspaceFolder}\\socketStream\\rapidjson\\include"
             ],
             "group": "build",
             "presentation":{
