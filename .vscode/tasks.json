@@ -100,7 +100,7 @@
                 "/DMAKEDLL",
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "$${workspaceFolder}\\socketStream\\rapidjson\\include",
+                "-I", "${workspaceFolder}\\socketStream\\rapidjson\\include",
                 "/EHsc",
                 "/Fe:",
                 "${workspaceFolder}\\lib\\win32\\x86\\emgAcquireClient.dll",
