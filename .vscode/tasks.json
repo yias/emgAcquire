@@ -17,7 +17,7 @@
             "args": [
                 "-I", "${workspaceFolder}\\include",
                 "-I", "${workspaceFolder}\\socketStream\\include",
-                "-I", "${env:CPP_DEPENDENCIES}\\rapidjson\\include",
+                "-I", "${workspaceFolder}\\socketStream\\rapidjson\\include",
                 // "/Zi",
                 "/EHsc",
                 "/Fe:",
