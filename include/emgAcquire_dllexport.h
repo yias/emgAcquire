@@ -160,11 +160,13 @@ namespace emgAcquire{
         int dirExists(std::string tpath);
     #endif
     double *returned_p;
+    std::vector<double> returnedVector;
     extern "C"{
         EXPORT Client* new_Client(const char* hostIP, int hostPort, float freq, int nb_ch){
             returned_p = new double[nb_ch*50]
             std::string hIP (hostIP);
             std::cout << hIP << std::endl;
+            returnedVector.reserve(nb_ch * 50);
             return new Client(hIP, (unsigned int)hostPort, freq, (unsigned int)nb_ch);
         }
         EXPORT int client_initialize(Client *clnt){
@@ -186,15 +188,18 @@ namespace emgAcquire{
             int nb_rows = tmp_data.size();
             int nb_cols = tmp_data[0].size();
 
-            std::vector<double> returnedVector;
-            returnedVector.reserve(nb_rows * nb_cols);
+            
+            
 
             for (int i=0; i < nb_rows; i++){
-                returnedVector.insert(returnedVector.end(), tmp_data[i].begin(), tmp_data[i].end());
+                for (int j=0; j<nb_cols; i++){
+                    returnedVector[i*nb_cols + j] = tmp_data[i][j];
+                }
+                // returnedVector.insert(returnedVector.end(), tmp_data[i].begin(), tmp_data[i].end());
             }
 
-            *returned_p = *returnedVector.data();
-            return returned_p;
+            // *returned_p = *returnedVector.data();
+            return returnedVector.data();
         }
     }
 }

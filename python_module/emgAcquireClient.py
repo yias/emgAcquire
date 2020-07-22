@@ -31,7 +31,7 @@ class emgAcquireClient(object):
 
         self.nb_ch = nb_channels
         self.frequency = freq
-        self.obj = lib.new_Client(svrIP.encode(), svrPort, freq, nb_channels)
+        self.obj = lib.new_Client(svrIP.encode('utf-8'), svrPort, freq, nb_channels)
         self.SR = 1000
         self.nb_samples = self.nb_ch * self.SR / self.frequency
         self.nb_samples = int(self.nb_samples)

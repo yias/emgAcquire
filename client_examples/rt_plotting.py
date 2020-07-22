@@ -12,7 +12,10 @@ from matplotlib.animation import FuncAnimation
 
 
 # directory of the emgAcquireClient python_module 
-emgAquire_dir = str(pathlib.Path().absolute()) + "\\..\\python_module"
+if sys.platform == 'linux':
+    emgAquire_dir = str(pathlib.Path().absolute()) + "/../python_module"
+else:
+    emgAquire_dir = str(pathlib.Path().absolute()) + "\\..\\python_module"
 
 # append the path including the directory of the python_module
 sys.path.append(emgAquire_dir)
@@ -62,7 +65,7 @@ for ax_i in m_axes:
 ##################################################
 
 # create an emgClient object for acquiring the data
-emgClient = emgAcquireClient.emgAcquireClient(nb_channels=nb_ch)
+emgClient = emgAcquireClient.emgAcquireClient(svrIP='128.179.163.218', nb_channels=nb_ch)
 
 # create a numpy array to contain all the data
 all_Data = np.array([], dtype=np.float32).reshape(6,0)
